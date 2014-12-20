@@ -2,13 +2,19 @@ import numpy as np
 from numpy import random, array
 from pandas import DataFrame, Series
 
+from stats.ancom import (_log_compare,
+                         ancom_cl,
+                         ancom_R)
+
 
 
 import unittest
 class TestANCOM(unittest.TestCase):
     def setUp(self):
-        L = 1000
-        D = 500
+        self.samples = 20
+        self.half_samples = 10
+        D = self.half_samples
+        L = self.samples
         self.data = {'OTU1': map( abs, map(int,
                                   np.concatenate((random.normal(10,1,D),
                                                   random.normal(20,1,D)))
@@ -70,6 +76,7 @@ class TestANCOM(unittest.TestCase):
         self.assertItemsEqual(sig_otus['OTU Significant at FDR = 0.05'],
                               ['OTU7', 'OTU5', 'OTU4', 'OTU2', 'OTU1'])
     def test_ancomCL(self):
+        D = self.half_samples
         otu_table = DataFrame(self.data)
         otu_table = otu_table.reindex_axis(sorted(otu_table.columns,reverse=True), axis=1)
         cats = array([0]*D + [1]*D)
@@ -81,7 +88,7 @@ class TestANCOM(unittest.TestCase):
         import time
         otu_table = DataFrame(self.bigdata)
         otu_table = otu_table.reindex_axis(sorted(otu_table.columns,reverse=True), axis=1)
-        counts = 10
+        counts = 3
         t1 = time.time()
         for _ in range(counts):
             sig_otus = ancom_R(otu_table,0.05,1,True)
@@ -99,7 +106,7 @@ class TestANCOM(unittest.TestCase):
         print("Approx U-test [s]",approx_time)
         print("Exact U-test [s]",exact_time)
         print("Exact GPU [s]",gpu_time)
-        self.assertGreaterThan(approx_time,gpu_time)
-        self.assertGreaterThan(exact_time,gpu_time)
+        self.assertGreater(approx_time,gpu_time)
+        self.assertGreater(exact_time,gpu_time)
 
 unittest.main()

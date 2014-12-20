@@ -8,78 +8,142 @@ import copy
 
 import unittest
 
-## Basic quick test
-mat = np.array([range(10)]*6,dtype=np.float32)
-cats = np.array([0]*5+[1]*5,dtype=np.float32)
+from stats.permutation import (_naive_mean_permutation_test,
+                               _np_mean_permutation_test,
+                               _cl_mean_permutation_test)
 
-nv_stats, nv_p = _naive_mean_permutation_test(mat,cats,1000)
-np_stats, np_p = _np_mean_permutation_test(mat,cats,1000)
-cl_stats, cl_p = _cl_mean_permutation_test(mat,cats,1000)
+class TestPermutation(unittest.TestCase):
 
-nv_stats = np.matrix(nv_stats).transpose()
-assert sum(abs(nv_stats-np_stats) > 0.1) == 0
-assert sum(abs(nv_stats-cl_stats) > 0.1) == 0
+    
+    def test_basic1(self):
+        ## Basic quick test
+        D = 5
+        M = 6
+        mat = np.array([range(10)]*M,dtype=np.float32)
+        cats = np.array([0]*D+[1]*D,dtype=np.float32)
+
+        nv_stats, nv_p = _naive_mean_permutation_test(mat,cats,1000)
+        np_stats, np_p = _np_mean_permutation_test(mat,cats,1000)
+        cl_stats, cl_p = _cl_mean_permutation_test(mat,cats,1000)
+
+        nv_stats = np.matrix(nv_stats).transpose()
+        nv_p = np.matrix(nv_p).transpose()
+        self.assertEquals(sum(abs(nv_stats-np_stats) > 0.1), 0)
+        self.assertEquals(sum(abs(nv_stats-cl_stats) > 0.1), 0)
+        #Check test statistics
+        self.assertAlmostEquals(sum(nv_stats-5),0,0.01)
+        self.assertAlmostEquals(sum(np_stats-5),0,0.01)
+        self.assertAlmostEquals(sum(cl_stats-5),0,0.01)
+        #Check for small pvalues
+        self.assertEquals(sum(nv_p>0.05),0)
+        self.assertEquals(sum(np_p>0.05),0)
+        self.assertEquals(sum(cl_p>0.05),0)
 
 
+    def test_basic2(self):
+        ## Basic quick test
+        D = 5
+        M = 6
+        mat = np.array([[0]*D+[10]*D]*M,dtype=np.float32)
+        cats = np.array([0]*D+[1]*D,dtype=np.float32)
 
+        nv_stats, nv_p = _naive_mean_permutation_test(mat,cats,1000)
+        np_stats, np_p = _np_mean_permutation_test(mat,cats,1000)
+        cl_stats, cl_p = _cl_mean_permutation_test(mat,cats,1000)
 
-## Profile code
-def nv_prof():
-    N = 20
-    M = 20
-    counts = 10
-    mat = np.array([range(M)]*N,dtype=np.float32)
-    cats = np.array([0]*(M/2)+[1]*(M/2),dtype=np.float32)
-    for _ in range(counts):
-        _naive_mean_permutation_test(mat,cats,1000)
+        nv_stats = np.matrix(nv_stats).transpose()
+        nv_p = np.matrix(nv_p).transpose()
+        self.assertEquals(sum(abs(nv_stats-np_stats) > 0.1), 0)
+        self.assertEquals(sum(abs(nv_stats-cl_stats) > 0.1), 0)
+        #Check test statistics
+        self.assertAlmostEquals(sum(nv_stats-10),0,0.01)
+        self.assertAlmostEquals(sum(np_stats-10),0,0.01)
+        self.assertAlmostEquals(sum(cl_stats-10),0,0.01)
+        #Check for small pvalues
+        self.assertEquals(sum(nv_p>0.05),0)
+        self.assertEquals(sum(np_p>0.05),0)
+        self.assertEquals(sum(cl_p>0.05),0)
 
-import cProfile
-cProfile.run("nv_prof()")
+    def test_large(self):
+        ## Large test
+        N = 10
+        mat = np.array(
+            np.matrix(np.vstack((
+                np.array([0]*(N/2)+[1]*(N/2)),
+                np.array([0]*N),
+                np.array([0]*N),
+                np.array([0]*N),
+                np.array([0]*N),
+                np.array([0]*N),
+                np.random.random(N))),dtype=np.float32))
+        cats = np.array([0]*(N/2)+[1]*(N/2),dtype=np.float32)
+        np_stats, np_p = _np_mean_permutation_test(mat,cats,1000)
+        cl_stats, cl_p = _cl_mean_permutation_test(mat,cats,1000)
+        self.assertEquals(sum(abs(np_stats-cl_stats) > 0.1), 0)
+        
+    def test_random(self):
+        ## Randomized test
+        N = 10
+        mat = np.array(
+            np.matrix(np.vstack((
+                np.array([0]*(N/2)+[1]*(N/2)),
+                np.random.random(N),
+                np.random.random(N),
+                np.random.random(N),
+                np.random.random(N),
+                np.random.random(N),
+                np.random.random(N))),dtype=np.float32))
+        cats = np.array([0]*(N/2)+[1]*(N/2),dtype=np.float32)
+        nv_stats, nv_p = _naive_mean_permutation_test(mat,cats,1000)
+        np_stats, np_p = _np_mean_permutation_test(mat,cats,1000)
+        cl_stats, cl_p = _cl_mean_permutation_test(mat,cats,1000)
+        nv_stats = np.matrix(nv_stats).transpose()
 
-def np_prof():
-    N = 20
-    M = 20
-    counts = 10
-    mat = np.array([range(M)]*N,dtype=np.float32)
-    cats = np.array([0]*(M/2)+[1]*(M/2),dtype=np.float32)
-    for _ in range(counts):
-        _np_mean_permutation_test(mat,cats,1000)
+        self.assertAlmostEquals(nv_stats[0],1,0.01)
+        self.assertAlmostEquals(np_stats[0],1,0.01)
+        self.assertAlmostEquals(cl_stats[0],1,0.01)
+        self.assertLess(nv_p[0],0.05)
+        self.assertLess(np_p[0],0.05)
+        self.assertLess(cl_p[0],0.05)
 
-import cProfile
-cProfile.run("np_prof()")
+        #Check test statistics
+        self.assertEquals(sum(nv_stats[1:]>nv_stats[0]), 0)
+        self.assertEquals(sum(np_stats[1:]>np_stats[0]), 0)
+        self.assertEquals(sum(cl_stats[1:]>cl_stats[0]), 0)
+        
+        #Check for small pvalues
+        self.assertEquals(sum(nv_p<0.05),1)
+        self.assertEquals(sum(np_p<0.05),1)
+        self.assertEquals(sum(cl_p<0.05),1)
 
-def cl_prof():
-    N = 1000
-    M = 1000
-    counts = 10
-    mat = np.array([range(M)]*N,dtype=np.float32)
-    cats = np.array([0]*(M/2)+[1]*(M/2),dtype=np.float32)
-    for _ in range(counts):
-        _cl_mean_permutation_test(mat,cats,1000)
+        self.assertEquals(sum(abs(np_stats-cl_stats) > 0.1), 0)
+        self.assertEquals(sum(abs(nv_stats-cl_stats) > 0.1), 0)
+        
+    def test_times(self):
+        ## Compare timings between numpy and pyviennacl
+        N = 20
+        M = 20
+        mat = np.array([range(M)]*N,dtype=np.float32)
+        cats = np.array([0]*(M/2)+[1]*(M/2),dtype=np.float32)
 
-import cProfile
-cProfile.run("cl_prof()")
+        t1 = time()
+        counts = 3
+        for _ in range(counts):
+            nv_stats, nv_p = _naive_mean_permutation_test(mat,cats,1000)
+        nv_time = (time()-t1)/counts
+        t1 = time()
+        for _ in range(counts):
+            np_stats, np_p = _np_mean_permutation_test(mat,cats,1000)
+        np_time = (time()-t1)/counts
+        t1 = time()
+        for _ in range(counts):
+            cl_stats, cl_p = _cl_mean_permutation_test(mat,cats,1000)
+        cl_time = (time()-t1)/counts
 
-## Large test
-N = 100
-M = 100
-mat = np.array([range(M)]*N,dtype=np.float32)
-cats = np.array([0]*(M/2)+[1]*(M/2),dtype=np.float32)
-
-t1 = time()
-counts = 10
-for _ in range(counts):
-    nv_stats, nv_p = _naive_mean_permutation_test(mat,cats,1000)
-nv_time = (time()-t1)/counts
-t1 = time()
-for _ in range(counts):
-    np_stats, np_p = _np_mean_permutation_test(mat,cats,1000)
-np_time = (time()-t1)/counts
-t1 = time()
-for _ in range(counts):
-    cl_stats, cl_p = _cl_mean_permutation_test(mat,cats,1000)
-cl_time = (time()-t1)/counts
-
-print "Naive time [s]:", nv_time
-print "Numpy time [s]:", np_time
-print "GPU compute [s]:", cl_time
+        print "Naive time [s]:", nv_time
+        print "Numpy time [s]:", np_time
+        print "GPU compute [s]:", cl_time
+        self.assertGreater(nv_time,cl_time)
+        self.assertGreater(np_time,cl_time)
+        
+unittest.main()

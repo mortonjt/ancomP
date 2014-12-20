@@ -12,7 +12,7 @@ import numpy as np
 from numpy import random, array
 from pandas import DataFrame, Series
 
-from scipy.stats import mannwhitneyu
+
 from math import log
 from statsmodels.sandbox.stats.multicomp import multipletests 
 from permutation import (_cl_mean_permutation_test,
@@ -123,41 +123,108 @@ def ancom_R(otu_table,sig,multcorr,wilcox):
     --------
     Names of signficantly correlated OTUs
     """
-    base_path = os.path.dirname(os.path.abspath(__file__))
-    rcode = open("%s/ANCOM_without_covariates.r"%base_path).read()
+    rcode = """
+    ancom.detect <- function(otu_data,n_otu,alpha,multcorr,wilcox=FALSE){
+      logratio.mat=matrix(NA,nr=n_otu,nc=n_otu)
+
+      for(i in 1:(n_otu-1)){
+          for(j in (i+1):n_otu){
+              data.pair=otu_data[,c(i,j,n_otu+1)]
+              lr=log((0.001+as.numeric(data.pair[,1]))/(0.001+as.numeric(data.pair[,2])))
+              logratio.mat[i,j]=wilcox.test(lr[data.pair$grp==unique(data.pair$grp)[1]],
+                              lr[data.pair$grp==unique(data.pair$grp)[2]],
+                              exact=wilcox)$p.value
+          }
+      }
+
+      ind <- lower.tri(logratio.mat)
+      logratio.mat[ind] <- t(logratio.mat)[ind]
+      logratio.mat[which(is.finite(logratio.mat)==FALSE)]=1
+      mc.pval=t(apply(logratio.mat,1,function(x){
+        s=p.adjust(x, method = "BH")
+        return(s)
+      }))
+
+      a=logratio.mat[upper.tri(logratio.mat,diag=F)==T]
+
+      b=matrix(0,nc=n_otu,nr=n_otu)
+      b[upper.tri(b)==T]=p.adjust(a, method = "BH")
+      diag(b)=NA
+      ind.1 <- lower.tri(b)
+      b[ind.1] <- t(b)[ind.1]
+
+      if(multcorr==2){
+        W=apply(mc.pval,1,function(x){
+          subp=length(which(x<alpha))
+        })
+      }else if(multcorr==1){
+        W=apply(b,1,function(x){
+          subp=length(which(x<alpha))
+        })
+      }else if(multcorr==3){
+        W=apply(logratio.mat,1,function(x){
+          subp=length(which(x<alpha))
+        })
+      }
+
+      return(W)
+    }
+
+    ANCOM <- function(real.data,sig,multcorr_type,wilcox){
+
+      ####real.data <- read.delim(filepath,header=TRUE)
+      colnames(real.data)[ ncol(real.data) ] <- "grp"
+      real.data <- data.frame(real.data[which(is.na(real.data$grp)==FALSE),],row.names=NULL)
+      par1_new=dim(real.data)[2]-1
+
+      W.detected <- ancom.detect(real.data,par1_new,sig,multcorr_type,wilcox)
+      if( ncol(real.data) < 10 ){
+
+        ### Detected using arbitrary cutoff
+        results <- colnames(real.data)[which(W.detected > par1_new-1 )]    
+      } else{
+        ### Detected using a stepwise mode detection
+        if(max(W.detected)/par1_new >= 0.10){
+          c.start <- max(W.detected)/par1_new
+          cutoff  <- c.start-c(0.05,0.10,0.15,0.20,0.25)
+          prop_cut<- rep(0,length(cutoff))
+          for(cut in 1:length(cutoff)){
+            prop_cut[cut] <- length(which(W.detected>=par1_new*cutoff[cut]))/length(W.detected)
+          } 
+          del=rep(0,length(cutoff)-1)
+          for(i in 1:(length(cutoff)-1)){
+            del[i]=abs(prop_cut[i]-prop_cut[i+1])
+          }
+
+          if(del[1]<0.02&del[2]<0.02&del[3]<0.02){nu=cutoff[1]
+          }else if(del[1]>=0.02&del[2]<0.02&del[3]<0.02){nu=cutoff[2]
+          }else if(del[2]>=0.02&del[3]<0.02&del[4]<0.02){nu=cutoff[3]                                
+          }else{nu=cutoff[4]}
+
+          up_point <- min(W.detected[which(W.detected>=nu*par1_new)])
+
+          W.detected[W.detected>=up_point]=99999
+          W.detected[W.detected<up_point]=0
+          W.detected[W.detected==99999]=1
+
+          results=colnames(real.data)[which(W.detected==1)]
+
+        } else{
+          W.detected=0
+          results <- "No significant OTUs detected"
+        }
+      }
+
+      results <- as.data.frame( results , ncol=1 )
+      colnames(results)= paste0("OTU Significant at FDR = ", sig )
+      return(results)
+
+    }
+    """
     otu_Rtable = com.convert_to_r_dataframe(otu_table)
     Rfunc = robj.r(rcode)
     sig_Rotus = Rfunc(otu_Rtable,sig,multcorr,wilcox)
     sig_otus = com.convert_robj(sig_Rotus)
     return sig_otus
 
-if __name__=="__main__":
-    ## 7 OTUs, 10 samples
-    mat = np.array(
-        np.matrix(np.vstack((
-            np.array([0]*5+[1]*5),
-            np.array([0]*10),
-            np.array([0]*10),
-            np.array([0]*10),
-            np.array([0]*10),
-            np.array([0]*10),
-            np.random.random(10))),dtype=np.float32))
-    
-    cats = np.array([0]*5+[1]*5,dtype=np.float32)
-    lr = _log_compare(mat,cats,permutations=10000)
-
-    ## 7 OTUs, N samples
-    N = 10
-    mat = np.array(
-        np.matrix(np.vstack((
-            np.array([0]*(N/2)+[1]*(N/2)),
-            np.array([0]*N),
-            np.array([0]*N),
-            np.array([0]*N),
-            np.array([0]*N),
-            np.array([0]*N),
-            np.random.random(N))),dtype=np.float32))
-    
-    cats = np.array([0]*(N/2)+[1]*(N/2),dtype=np.float32)
-    lr = _log_compare(mat,cats,permutations=1000)
 
