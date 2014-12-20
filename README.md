@@ -35,9 +35,11 @@ to mitigate the dependency issues.
 
 Getting Started
 ===============
+After installing this software, I recommend running the unittests to make sure that everything is working.
+To run ANCOM from the command, run the following command.
 ```
 python bin/run_ancom.py 
-   --otu-table=data/otu_test.txt 
+  --otu-table=data/otu_test.txt 
   --meta-data=data/meta_test.txt 
   --variable-of-interest=GRP1 
   --output="test.out"
