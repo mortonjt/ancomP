@@ -85,7 +85,6 @@ def _np_mean_permutation_test(mat,cats,permutations=1000):
     ## and calculate averages
     sums = mat * perms
     avgs = sums / perms.sum(axis=0)
-
     ## Calculate the mean statistic
     idx = np.array([i for i in range(0,(permutations+1)*num_cats,2)])
     mean_stat = abs(avgs[:,idx+1] - avgs[:,idx])

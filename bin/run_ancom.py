@@ -7,8 +7,9 @@ def run(otu_file, meta_file, voi, out_handle, alpha, permutations):
     otu_table = pd.read_table(otu_file,index_col=0)
     metadata  = pd.read_table(meta_file)
     cats = metadata[voi].as_matrix()
-    sig_otus = ancom_cl(otu_table,cats,alpha,permutations)
 
+    sig_otus = ancom_cl(otu_table,cats,alpha,permutations)
+    
     outhandle.write('\n'.join(sig_otus) + '\n')
 
 if __name__=="__main__":

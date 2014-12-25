@@ -19,6 +19,7 @@ from permutation import (_cl_mean_permutation_test,
                          _np_mean_permutation_test,
                          _naive_mean_permutation_test)
 
+
 def _log_compare(mat,cats,permutations=1000):
     """
     Calculates pairwise log ratios between all otus
@@ -38,11 +39,12 @@ def _log_compare(mat,cats,permutations=1000):
     """    
     r,c = mat.shape
     log_mat = np.log(mat+(1./r))
-    log_ratio = np.zeros((r,r))
+    log_ratio = np.zeros((r,r),dtype=np.float32)
     for i in range(r-1):
         ratio =  np.array(np.matrix(log_mat[i+1:,:]) - np.matrix(log_mat[i,:]))
-        m, p = _np_mean_permutation_test(ratio,cats,permutations)
-        log_ratio[i,i+1:] = np.matrix(p).transpose()        
+        m, p = _cl_mean_permutation_test(ratio,cats,permutations)
+        log_ratio[i,i+1:] = np.matrix(p).transpose()
+        print("OTU ",i)
     return log_ratio
 
 def ancom_cl(otu_table,cats,alpha,permutations=1000):
@@ -68,6 +70,9 @@ def ancom_cl(otu_table,cats,alpha,permutations=1000):
     """
 
     mat = otu_table.as_matrix().transpose()
+    mat = mat.astype(np.float32)
+    cats = cats.astype(np.float32)
+    
     _logratio_mat = _log_compare(mat,cats,permutations)
     logratio_mat = _logratio_mat + _logratio_mat.transpose()
     n_otu,n_samp = mat.shape
@@ -75,6 +80,7 @@ def ancom_cl(otu_table,cats,alpha,permutations=1000):
     for i in range(n_otu):
          _,pvalues,_,_ = multipletests(logratio_mat[i,:])
          logratio_mat[i,:] = pvalues
+         print("OTU:",i)
     W = np.zeros(n_otu)
     for i in range(n_otu):
         W[i] = sum(logratio_mat[i,:] < alpha)
