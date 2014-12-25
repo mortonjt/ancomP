@@ -12,9 +12,7 @@ Installation
 ============
 This software requires the following dependencies
 ```
-rpy2
 pandas
-statsmodels
 pyopencl
 pyviennacl
 numpy >= 1.7

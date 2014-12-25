@@ -1,7 +1,5 @@
 numpy >= 1.7
 scipy >= 0.13.0
-rpy2
 pandas
-statsmodels
 pyopencl
 pyviennacl
