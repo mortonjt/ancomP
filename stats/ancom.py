@@ -6,7 +6,6 @@ from time import time
 import copy
 
 import os, sys, site
-import rpy2.robjects as robj
 import pandas.rpy.common as com
 import numpy as np
 from numpy import random, array
@@ -14,11 +13,34 @@ from pandas import DataFrame, Series
 
 
 from math import log
-from statsmodels.sandbox.stats.multicomp import multipletests 
 from permutation import (_cl_mean_permutation_test,
                          _np_mean_permutation_test,
                          _naive_mean_permutation_test)
+def Holm(p):
+    """
+    Performs Holm-Boniferroni correction for pvalues
+    to account for multiple comparisons
+    
+    p: numpy.array
 
+    Returns
+    =======
+    numpy.array
+
+    corrected pvalues
+    """
+    K = len(p)
+    sort_index = -np.ones(K,dtype=np.int64)
+    sorted_p = np.sort(p)
+    sorted_p_adj = sorted_p*(K-np.arange(K))
+    for j in range(K):
+        num_ties = len(sort_index[(p==sorted_p[j]) & (sort_index<0)])
+        sort_index[(p==sorted_p[j]) & (sort_index<0)] = np.arange(j,(j+num_ties),dtype=np.int64)
+
+    sorted_holm_p = [min([max(sorted_p_adj[:k]),1]) for k in range(1,K+1)]
+    holm_p = [sorted_holm_p[sort_index[k]] for k in range(K)]
+    return holm_p
+ 
 
 def _log_compare(mat,cats,permutations=1000):
     """
@@ -44,7 +66,6 @@ def _log_compare(mat,cats,permutations=1000):
         ratio =  np.array(np.matrix(log_mat[i+1:,:]) - np.matrix(log_mat[i,:]))
         m, p = _cl_mean_permutation_test(ratio,cats,permutations)
         log_ratio[i,i+1:] = np.matrix(p).transpose()
-        print("OTU ",i)
     return log_ratio
 
 def ancom_cl(otu_table,cats,alpha,permutations=1000):
@@ -78,7 +99,7 @@ def ancom_cl(otu_table,cats,alpha,permutations=1000):
     n_otu,n_samp = mat.shape
     ##Multiple comparisons
     for i in range(n_otu):
-         _,pvalues,_,_ = multipletests(logratio_mat[i,:])
+         pvalues = Holm(logratio_mat[i,:])
          logratio_mat[i,:] = pvalues
          print("OTU:",i)
     W = np.zeros(n_otu)
@@ -107,130 +128,4 @@ def ancom_cl(otu_table,cats,alpha,permutations=1000):
     up_point = min(W[W>nu*par])
     results = otu_table.columns[W>=nu*par]
     return results
-
-def ancom_R(otu_table,sig,multcorr,wilcox):
-    """
-    otu_table: pandas.DataFrame
-        rows = samples
-        cols = otus
-        A table of OTU abundances
-        Last column will be group ids (e.g. Urban/Rural)
-    sig: float
-        significance value
-    multcorr: int
-        multiple corrections (e.g. 1, 2, 3)
-        1: Very strict
-        2: Not as strict
-        3: No multiple hypotheses correction (very bad idea)
-    wilcox: bool
-       perform an exact wilcox test or not
-
-    Returns:
-    --------
-    Names of signficantly correlated OTUs
-    """
-    rcode = """
-    ancom.detect <- function(otu_data,n_otu,alpha,multcorr,wilcox=FALSE){
-      logratio.mat=matrix(NA,nr=n_otu,nc=n_otu)
-
-      for(i in 1:(n_otu-1)){
-          for(j in (i+1):n_otu){
-              data.pair=otu_data[,c(i,j,n_otu+1)]
-              lr=log((0.001+as.numeric(data.pair[,1]))/(0.001+as.numeric(data.pair[,2])))
-              logratio.mat[i,j]=wilcox.test(lr[data.pair$grp==unique(data.pair$grp)[1]],
-                              lr[data.pair$grp==unique(data.pair$grp)[2]],
-                              exact=wilcox)$p.value
-          }
-      }
-
-      ind <- lower.tri(logratio.mat)
-      logratio.mat[ind] <- t(logratio.mat)[ind]
-      logratio.mat[which(is.finite(logratio.mat)==FALSE)]=1
-      mc.pval=t(apply(logratio.mat,1,function(x){
-        s=p.adjust(x, method = "BH")
-        return(s)
-      }))
-
-      a=logratio.mat[upper.tri(logratio.mat,diag=F)==T]
-
-      b=matrix(0,nc=n_otu,nr=n_otu)
-      b[upper.tri(b)==T]=p.adjust(a, method = "BH")
-      diag(b)=NA
-      ind.1 <- lower.tri(b)
-      b[ind.1] <- t(b)[ind.1]
-
-      if(multcorr==2){
-        W=apply(mc.pval,1,function(x){
-          subp=length(which(x<alpha))
-        })
-      }else if(multcorr==1){
-        W=apply(b,1,function(x){
-          subp=length(which(x<alpha))
-        })
-      }else if(multcorr==3){
-        W=apply(logratio.mat,1,function(x){
-          subp=length(which(x<alpha))
-        })
-      }
-
-      return(W)
-    }
-
-    ANCOM <- function(real.data,sig,multcorr_type,wilcox){
-
-      ####real.data <- read.delim(filepath,header=TRUE)
-      colnames(real.data)[ ncol(real.data) ] <- "grp"
-      real.data <- data.frame(real.data[which(is.na(real.data$grp)==FALSE),],row.names=NULL)
-      par1_new=dim(real.data)[2]-1
-
-      W.detected <- ancom.detect(real.data,par1_new,sig,multcorr_type,wilcox)
-      if( ncol(real.data) < 10 ){
-
-        ### Detected using arbitrary cutoff
-        results <- colnames(real.data)[which(W.detected > par1_new-1 )]    
-      } else{
-        ### Detected using a stepwise mode detection
-        if(max(W.detected)/par1_new >= 0.10){
-          c.start <- max(W.detected)/par1_new
-          cutoff  <- c.start-c(0.05,0.10,0.15,0.20,0.25)
-          prop_cut<- rep(0,length(cutoff))
-          for(cut in 1:length(cutoff)){
-            prop_cut[cut] <- length(which(W.detected>=par1_new*cutoff[cut]))/length(W.detected)
-          } 
-          del=rep(0,length(cutoff)-1)
-          for(i in 1:(length(cutoff)-1)){
-            del[i]=abs(prop_cut[i]-prop_cut[i+1])
-          }
-
-          if(del[1]<0.02&del[2]<0.02&del[3]<0.02){nu=cutoff[1]
-          }else if(del[1]>=0.02&del[2]<0.02&del[3]<0.02){nu=cutoff[2]
-          }else if(del[2]>=0.02&del[3]<0.02&del[4]<0.02){nu=cutoff[3]                                
-          }else{nu=cutoff[4]}
-
-          up_point <- min(W.detected[which(W.detected>=nu*par1_new)])
-
-          W.detected[W.detected>=up_point]=99999
-          W.detected[W.detected<up_point]=0
-          W.detected[W.detected==99999]=1
-
-          results=colnames(real.data)[which(W.detected==1)]
-
-        } else{
-          W.detected=0
-          results <- "No significant OTUs detected"
-        }
-      }
-
-      results <- as.data.frame( results , ncol=1 )
-      colnames(results)= paste0("OTU Significant at FDR = ", sig )
-      return(results)
-
-    }
-    """
-    otu_Rtable = com.convert_to_r_dataframe(otu_table)
-    Rfunc = robj.r(rcode)
-    sig_Rotus = Rfunc(otu_Rtable,sig,multcorr,wilcox)
-    sig_otus = com.convert_robj(sig_Rotus)
-    return sig_otus
-
 

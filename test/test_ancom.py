@@ -4,7 +4,7 @@ from pandas import DataFrame, Series
 
 from stats.ancom import (_log_compare,
                          ancom_cl,
-                         ancom_R)
+                         Holm)
 
 
 
@@ -68,13 +68,13 @@ class TestANCOM(unittest.TestCase):
              {'OTU%d'%i: map( abs, map( int,random.normal(10,1,L))) for i in range(0,80)}.items()+
              {'GRP': array([0]*D + [1]*D)}.items()
              )
-
-    def test_ancomR(self):
-        otu_table = DataFrame(self.data)
-        otu_table = otu_table.reindex_axis(sorted(otu_table.columns,reverse=True), axis=1)
-        sig_otus = ancom_R(otu_table,0.05,2,False)
-        self.assertItemsEqual(sig_otus['OTU Significant at FDR = 0.05'],
-                              ['OTU7', 'OTU5', 'OTU4', 'OTU2', 'OTU1'])
+    def test_holm(self):
+        p = [0.005, 0.011, 0.02, 0.04, 0.13]
+        corrected_p = p * np.arange(1,6)[::-1]
+        guessed_p = Holm(p)
+        for a,b in zip(corrected_p,guessed_p):
+            self.assertAlmostEqual(a,b)
+        
     def test_ancomCL(self):
         D = self.half_samples
         otu_table = DataFrame(self.data)
@@ -84,29 +84,29 @@ class TestANCOM(unittest.TestCase):
         self.assertItemsEqual(sig_otus,
                               ['OTU7', 'OTU5', 'OTU4', 'OTU2', 'OTU1', 'GRP'])
     
-    def test_speed(self):
-        import time
-        otu_table = DataFrame(self.bigdata)
-        otu_table = otu_table.reindex_axis(sorted(otu_table.columns,reverse=True), axis=1)
-        counts = 3
-        t1 = time.time()
-        for _ in range(counts):
-            sig_otus = ancom_R(otu_table,0.05,1,True)
-        approx_time = (time.time()-t1)/counts
-        t1 = time.time()
-        for _ in range(counts):
-            sig_otus = ancom_R(otu_table,0.05,1,False)
-        for _ in range(counts):
-            exact_time = (time.time()-t1)/counts
-        t1 = time.time()
-        for _ in range(counts):
-            sig_otus = ancom_cl(otu_table,0.05,1,False)
-        gpu_time = (time.time()-t1)/counts
+    # def test_speed(self):
+    #     import time
+    #     otu_table = DataFrame(self.bigdata)
+    #     otu_table = otu_table.reindex_axis(sorted(otu_table.columns,reverse=True), axis=1)
+    #     counts = 3
+    #     t1 = time.time()
+    #     for _ in range(counts):
+    #         sig_otus = ancom_R(otu_table,0.05,1,True)
+    #     approx_time = (time.time()-t1)/counts
+    #     t1 = time.time()
+    #     for _ in range(counts):
+    #         sig_otus = ancom_R(otu_table,0.05,1,False)
+    #     for _ in range(counts):
+    #         exact_time = (time.time()-t1)/counts
+    #     t1 = time.time()
+    #     for _ in range(counts):
+    #         sig_otus = ancom_cl(otu_table,0.05,1,False)
+    #     gpu_time = (time.time()-t1)/counts
 
-        print("Approx U-test [s]",approx_time)
-        print("Exact U-test [s]",exact_time)
-        print("Exact GPU [s]",gpu_time)
-        self.assertGreater(approx_time,gpu_time)
-        self.assertGreater(exact_time,gpu_time)
+    #     print("Approx U-test [s]",approx_time)
+    #     print("Exact U-test [s]",exact_time)
+    #     print("Exact GPU [s]",gpu_time)
+    #     self.assertGreater(approx_time,gpu_time)
+    #     self.assertGreater(exact_time,gpu_time)
 
 unittest.main()
