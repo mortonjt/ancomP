@@ -12,9 +12,12 @@ from numpy import random, array
 from pandas import DataFrame, Series
 
 from math import log
-from permutation import (_cl_mean_permutation_test,
-                         _np_mean_permutation_test,
-                         _naive_mean_permutation_test)
+from stats.permutation import (_init_device,
+                               _two_sample_mean_statistic,
+                               _cl_mean_permutation_test,
+                               _np_mean_permutation_test,
+                               _naive_mean_permutation_test)
+
 def Holm(p):
     """
     Performs Holm-Boniferroni correction for pvalues
@@ -64,19 +67,20 @@ def _stationary_log_compare(mat,cats,permutations=1000):
     """
     r,c = mat.shape
     log_mat = np.log(mat+(1./r))
-    log_ratio = np.zeros((r,r),dtype=np.float32)
+    log_ratio = np.zeros((r,r),dtype=mat.dtype)
     
     d_logmat, d_perms = _init_device(log_mat, cats, permutations)
-    
-    for i in range(r-1):
-        ratio =  d_logmat[i+1:,:]
-        for j in range(i+1,r):
-             ratio[j,:] = ratio[j,:] - d_logmat[i,:]
-        m, p = _two_sample_mean_statistic(ratio, d_perms)
+    _ones = pv.Matrix(np.ones((r-1,2),dtype=mat.dtype))[:,1] #hacky way to make 1-D matrices
+    for i in range(r-1):        
+        ## Perform outer product to create copies of d_logmat[i,:]
+        ## similar to np.tile
+        outer = _ones[i:] * d_logmat[i,:]
+        ratio =  d_logmat[i+1:,:] - outer
+        m, p  = _two_sample_mean_statistic(ratio.result, d_perms)
         log_ratio[i,i+1:] = np.matrix(p).transpose()
     return log_ratio
 
-def _log_compare(mat,cats,permutations=1000):
+def _log_compare(mat, cats, stat_test=_cl_mean_permutation_test, permutations=1000):
     """
     Calculates pairwise log ratios between all otus
     and performs a permutation tests to determine if there is a
@@ -89,6 +93,10 @@ def _log_compare(mat,cats,permutations=1000):
     
     cat: numpy array float32
     Binary categorical array
+
+    stat_stat: function
+    statistical test to run
+    
     Returns:
     --------
     log ratio pvalue matrix
@@ -98,8 +106,8 @@ def _log_compare(mat,cats,permutations=1000):
     log_ratio = np.zeros((r,r),dtype=np.float32)
     for i in range(r-1):
         ratio =  np.array(np.matrix(log_mat[i+1:,:]) - np.matrix(log_mat[i,:]))
-        m, p = _cl_mean_permutation_test(ratio,cats,permutations)
-        log_ratio[i,i+1:] = np.matrix(p).transpose()
+        m, p = stat_test(ratio,cats,permutations)
+        log_ratio[i,i+1:] = np.squeeze(np.array(np.matrix(p).transpose()))
     return log_ratio
 
 def ancom_cl(otu_table,cats,alpha,permutations=1000):
@@ -128,14 +136,15 @@ def ancom_cl(otu_table,cats,alpha,permutations=1000):
     mat = mat.astype(np.float32)
     cats = cats.astype(np.float32)
     
-    _logratio_mat = _log_compare(mat,cats,permutations)
+    _logratio_mat = _stationary_log_compare(mat,cats,permutations)
     logratio_mat = _logratio_mat + _logratio_mat.transpose()
     n_otu,n_samp = mat.shape
     ##Multiple comparisons
     for i in range(n_otu):
          pvalues = Holm(logratio_mat[i,:])
+         
          logratio_mat[i,:] = pvalues
-         print("OTU:",i)
+
     W = np.zeros(n_otu)
     for i in range(n_otu):
         W[i] = sum(logratio_mat[i,:] < alpha)

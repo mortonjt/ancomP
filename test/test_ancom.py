@@ -5,11 +5,11 @@ from pandas import DataFrame, Series
 from stats.ancom import (ancom_cl,
                          _log_compare,
                          _stationary_log_compare,
-                         _init_device,
-                         _mean_stat,
                          Holm)
 
-
+from stats.permutation import (_cl_mean_permutation_test,
+                               _np_mean_permutation_test,
+                               _naive_mean_permutation_test)
 
 import unittest
 class TestANCOM(unittest.TestCase):
@@ -52,7 +52,7 @@ class TestANCOM(unittest.TestCase):
                                    np.concatenate((random.normal(20,1,D),
                                                    random.normal(100000,1,D)))
                                    )),
-             'OTU3': map( abs, map( int,random.normal(10,1,L))),
+             'OTU3': map( abs, map(int,random.normal(10,1,L))),
              'OTU4': map( abs, map(int,
                                    np.concatenate((random.normal(10,1,D),
                                                    random.normal(20,1,D)))
@@ -79,38 +79,57 @@ class TestANCOM(unittest.TestCase):
             self.assertAlmostEqual(a,b)
         
     def test_ancomCL(self):
+        print("Test ancom cl")
         D = self.half_samples
         otu_table = DataFrame(self.data)
+        
         otu_table = otu_table.reindex_axis(sorted(otu_table.columns,reverse=True), axis=1)
         cats = array([0]*D + [1]*D)
-        sig_otus = ancom_cl(otu_table,cats,0.05,10000)
+        sig_otus = ancom_cl(otu_table,cats,0.05,1000)
         self.assertItemsEqual(sig_otus,
                               ['OTU7', 'OTU5', 'OTU4', 'OTU2', 'OTU1', 'GRP'])
 
     
-    # def test_speed(self):
-    #     import time
-    #     otu_table = DataFrame(self.bigdata)
-    #     otu_table = otu_table.reindex_axis(sorted(otu_table.columns,reverse=True), axis=1)
-    #     counts = 3
-    #     t1 = time.time()
-    #     for _ in range(counts):
-    #         sig_otus = ancom_R(otu_table,0.05,1,True)
-    #     approx_time = (time.time()-t1)/counts
-    #     t1 = time.time()
-    #     for _ in range(counts):
-    #         sig_otus = ancom_R(otu_table,0.05,1,False)
-    #     for _ in range(counts):
-    #         exact_time = (time.time()-t1)/counts
-    #     t1 = time.time()
-    #     for _ in range(counts):
-    #         sig_otus = ancom_cl(otu_table,0.05,1,False)
-    #     gpu_time = (time.time()-t1)/counts
+    def test_speed(self):
+        print("Test speed")
+        import time
+        D = self.half_samples
+        L = self.samples
 
-    #     print("Approx U-test [s]",approx_time)
-    #     print("Exact U-test [s]",exact_time)
-    #     print("Exact GPU [s]",gpu_time)
-    #     self.assertGreater(approx_time,gpu_time)
-    #     self.assertGreater(exact_time,gpu_time)
+        otu_table = DataFrame(self.bigdata)
+
+        mat = otu_table.as_matrix().transpose()
+        mat = mat.astype(np.float32)
+        cats = array([0]*D + [1]*D)
+        counts = 3
+        t1 = time.time()
+        for _ in range(counts):
+            sig_otus = _log_compare(mat,cats,
+                                    stat_test=_naive_mean_permutation_test,
+                                    permutations=1000)
+        naive_time = (time.time()-t1)/counts
+        t1 = time.time()
+        for _ in range(counts):
+            sig_otus = _log_compare(mat,cats,
+                                    stat_test=_np_mean_permutation_test,
+                                    permutations=1000)
+        numpy_time = (time.time()-t1)/counts
+        t1 = time.time()
+        for _ in range(counts):
+            sig_otus = _log_compare(mat,cats,
+                                    stat_test=_cl_mean_permutation_test,
+                                    permutations=1000)
+        cl_time = (time.time()-t1)/counts
+        t1 = time.time()
+        for _ in range(counts):
+            sig_otus = _stationary_log_compare(mat,cats,permutations=1000)
+        stationary_time = (time.time()-t1)/counts
+
+        print("Naive time [s]",naive_time)
+        print("Numpy time [s]",numpy_time)
+        print("Opencl time [s]",cl_time)
+        print("Stationary time [s]",stationary_time)
+        self.assertGreater(naive_time,cl_time)
+        self.assertGreater(stationary_time,cl_time)
 
 unittest.main()

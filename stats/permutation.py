@@ -79,7 +79,7 @@ def _np_mean_permutation_test(mat,cats,permutations=1000):
     for m in range(permutations+1):
         perms[:,2*m] = copy_cats 
         perms[:,2*m+1] = _ones - copy_cats 
-        np.random.shuffle(copy_cats )
+        np.random.shuffle(copy_cats)
 
     ## Perform matrix multiplication on data matrix
     ## and calculate averages
@@ -143,12 +143,12 @@ def _init_device(mat, cats, permutations=1000):
     num_cats = 2 #number of distinct categories
     r,c = mat.shape
     copy_cats = copy.deepcopy(cats)
-    perms = np.array(np.zeros((c,num_cats*(permutations+1)),dtype=cats.dtype))
+    perms = np.array(np.zeros((c,num_cats*(permutations+1)),dtype=mat.dtype))
     _samp_ones = np.array(np.ones(c),dtype=mat.dtype).transpose()
     _feat_ones = np.array(np.ones(r),dtype=mat.dtype).transpose()
     for m in range(permutations+1):
-        perms[:,2*m] = copy_cats / copy_cats.sum()
-        perms[:,2*m+1] = (_samp_ones - copy_cats) / (_samp_ones - copy_cats).sum()
+        perms[:,2*m] = copy_cats / float(copy_cats.sum())
+        perms[:,2*m+1] = (_samp_ones - copy_cats) / float((_samp_ones - copy_cats).sum())
         np.random.shuffle(copy_cats)
     
     d_perms = pv.Matrix(perms)
