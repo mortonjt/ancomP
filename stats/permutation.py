@@ -96,7 +96,41 @@ def _np_mean_permutation_test(mat,cats,permutations=1000):
     #_,pvalues,_,_ = multipletests(pvalues)
     return map(np.array,[mean_stat[:,0],pvalues])
 
-def _cl_mean_permutation_test(mat,cats,permutations=1000):
+def _two_sample_mean_stat(d_mat, d_perms, d_reps, permutations=1000):
+    
+    ## Perform matrix multiplication on data matrix
+    ## and calculate averages
+    num_cats = 2
+    n_otus, permuations = d_perms.shape
+    d_sums = d_mat * d_perms
+    avgs = np.matrix(((d_sums.T) * d_reps).value)
+    #sums = np.matrix(d_sums.value)
+    #avgs = sums / (np.matrix(perms).sum(axis=0))
+    ## Calculate the mean statistic
+    idx = np.array([i for i in range(0,(permutations+1)*num_cats, num_cats)])
+    mean_stat = abs(avgs[:,idx+1] - avgs[:,idx])
+
+    ## Calculate the p-values
+    cmps =  mean_stat[:,1:] >= mean_stat[:,0]
+    pvalues = (cmps.sum(axis=1)+1.)/(permutations+1.)
+    return map(np.array,[mean_stat[:,0],pvalues])
+
+def _init_device(mat,cats,permutations=1000):
+    num_cats = 2 #number of distinct categories
+    r,c = mat.shape
+    copy_cats = copy.deepcopy(cats)
+    perms = np.array(np.zeros((c,num_cats*(permutations+1)),dtype=cats.dtype))
+    _ones = np.array(np.ones(c),dtype=mat.dtype).transpose()
+    for m in range(permutations+1):
+        perms[:,2*m] = copy_cats
+        perms[:,2*m+1] = _ones - copy_cats
+        np.random.shuffle(copy_cats)
+    d_perms = pv.Matrix(perms)
+    d_mat = pv.Matrix(mat)
+    d_reps = pv.Vector(_ones * (1./r))
+    return d_mat, d_perms, d_reps
+
+def _cl_mean_permutation_test(mat,cats,permutations=1000,num_cats=2):
     """
     mat: numpy 2-d array,  numpy.float32
          columns: features (e.g. OTUs)
@@ -130,24 +164,11 @@ def _cl_mean_permutation_test(mat,cats,permutations=1000):
     #Now start copying stuff over to GPU
     d_perms = pv.Matrix(perms)
     d_mat = pv.Matrix(mat)
-    
-    ## Perform matrix multiplication on data matrix
-    ## and calculate averages
-    d_sums = d_mat * d_perms
-    
-    sums = np.matrix(d_sums.value)
-    avgs = sums / (np.matrix(perms).sum(axis=0))
-    ## Calculate the mean statistic
-    idx = np.array([i for i in range(0,(permutations+1)*num_cats,2)])
-    mean_stat = abs(avgs[:,idx+1] - avgs[:,idx])
-
-    ## Calculate the p-values
-    cmps =  mean_stat[:,1:] >= mean_stat[:,0]
-    pvalues = (cmps.sum(axis=1)+1.)/(permutations+1.)
+    d_reps = pv.Vector(_ones)/r
         
     #_,pvalues,_,_ = multipletests(pvalues)
-    return map(np.array,[mean_stat[:,0],pvalues])
-    
+    #return map(np.array,[mean_stat[:,0],pvalues])
+    return _mean_stat(d_mat, d_perms, d_reps, num_cats, permutations)
 
 
     

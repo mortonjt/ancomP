@@ -4,6 +4,8 @@ from pandas import DataFrame, Series
 
 from stats.ancom import (_log_compare,
                          ancom_cl,
+                         _init_device,
+                         _mean_stat,
                          Holm)
 
 
@@ -83,7 +85,9 @@ class TestANCOM(unittest.TestCase):
         sig_otus = ancom_cl(otu_table,cats,0.05,10000)
         self.assertItemsEqual(sig_otus,
                               ['OTU7', 'OTU5', 'OTU4', 'OTU2', 'OTU1', 'GRP'])
-    
+
+    def test_init_device(self):
+        
     # def test_speed(self):
     #     import time
     #     otu_table = DataFrame(self.bigdata)

@@ -83,7 +83,7 @@ class TestPermutation(unittest.TestCase):
         
     def test_random(self):
         ## Randomized test
-        N = 10
+        N = 50
         mat = np.array(
             np.matrix(np.vstack((
                 np.array([0]*(N/2)+[1]*(N/2)),
@@ -118,6 +118,27 @@ class TestPermutation(unittest.TestCase):
 
         self.assertEquals(sum(abs(np_stats-cl_stats) > 0.1), 0)
         self.assertEquals(sum(abs(nv_stats-cl_stats) > 0.1), 0)
+        
+    def test_init_device(self):
+        N = 10
+        mat = np.array(
+            np.matrix(np.vstack((
+                np.array([0]*(N/2)+[1]*(N/2)),
+                np.array([0]*N),
+                np.array([0]*N),
+                np.array([0]*N),
+                np.array([0]*N),
+                np.array([0]*N),
+                np.random.random(N))),dtype=np.float32))
+        cats = np.array([0]*(N/2)+[1]*(N/2), dtype=np.float32)
+        d_mat, d_perms, d_reps = _init_device(mat,cats)
+        self.assertEquals(type(d_mat), pv.pycore.Matrix)
+        self.assertEquals(type(d_perms), pv.pycore.Matrix)
+        self.assertEquals(type(d_reps), pv.pycore.Vector)
+        self.assertEquals(d_mat.shape, (7, 10) )
+        self.assertEquals(d_perms.shape, (10, 2002) )
+        self.assertEquals(d_reps.shape, (10, ) )
+        
         
     def test_times(self):
         ## Compare timings between numpy and pyviennacl

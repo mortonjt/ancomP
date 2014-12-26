@@ -11,7 +11,6 @@ import numpy as np
 from numpy import random, array
 from pandas import DataFrame, Series
 
-
 from math import log
 from permutation import (_cl_mean_permutation_test,
                          _np_mean_permutation_test,
@@ -41,6 +40,49 @@ def Holm(p):
     holm_p = [sorted_holm_p[sort_index[k]] for k in range(K)]
     return holm_p
  
+
+def _opt_log_compare(mat,cats,permutations=1000):
+    """
+    Calculates pairwise log ratios between all otus
+    and performs a permutation tests to determine if there is a
+    significant difference in OTU ratios with respect to the
+    variable of interest
+
+    This is an optimized version to minimize data transfer
+    between the CPU and GPU
+    
+    otu_table: numpy 2d matrix
+    rows = samples
+    cols = otus
+    
+    cat: numpy array float32
+    Binary categorical array
+    Returns:
+    --------
+    log ratio pvalue matrix
+    """
+    num_cats = 2 #number of distinct categories
+    r,c = mat.shape
+    copy_cats = copy.deepcopy(cats)
+    perms = np.array(np.zeros((c,num_cats*(permutations+1)),dtype=cats.dtype))
+    _ones = np.array(np.ones(c),dtype=mat.dtype).transpose()
+    for m in range(permutations+1):
+        perms[:,2*m] = copy_cats
+        perms[:,2*m+1] = _ones - copy_cats
+        np.random.shuffle(copy_cats)
+        
+    ##log ratio calculations
+    log_mat = np.log(mat+(1./r))
+    log_ratio = np.zeros((r,r),dtype=np.float32)
+    
+    d_perms = pv.Matrix(perms)
+    d_log_mat = pv.Matrix(log_mat)
+    for i in range(r-1):
+        d_mat =  d_log_mat[i+1:,:] - d_log_mat[i,:]
+        d_sums = d_mat * d_perms
+        
+        log_ratio[i,i+1:] = np.matrix(p).transpose()
+    return log_ratio
 
 def _log_compare(mat,cats,permutations=1000):
     """
