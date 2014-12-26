@@ -41,7 +41,7 @@ def Holm(p):
     return holm_p
  
 
-def _opt_log_compare(mat,cats,permutations=1000):
+def _stationary_log_compare(mat,cats,permutations=1000):
     """
     Calculates pairwise log ratios between all otus
     and performs a permutation tests to determine if there is a

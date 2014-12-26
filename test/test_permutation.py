@@ -10,7 +10,9 @@ import unittest
 
 from stats.permutation import (_naive_mean_permutation_test,
                                _np_mean_permutation_test,
-                               _cl_mean_permutation_test)
+                               _cl_mean_permutation_test,
+                               _init_device,
+                               _two_sample_mean_statistic)
 
 class TestPermutation(unittest.TestCase):
 
@@ -98,10 +100,10 @@ class TestPermutation(unittest.TestCase):
         np_stats, np_p = _np_mean_permutation_test(mat,cats,1000)
         cl_stats, cl_p = _cl_mean_permutation_test(mat,cats,1000)
         nv_stats = np.matrix(nv_stats).transpose()
-
-        self.assertAlmostEquals(nv_stats[0],1,0.01)
-        self.assertAlmostEquals(np_stats[0],1,0.01)
-        self.assertAlmostEquals(cl_stats[0],1,0.01)
+        
+        self.assertAlmostEquals(nv_stats[0],1.,4)
+        self.assertAlmostEquals(np_stats[0],1.,4)
+        self.assertAlmostEquals(cl_stats[0],1.,4)
         self.assertLess(nv_p[0],0.05)
         self.assertLess(np_p[0],0.05)
         self.assertLess(cl_p[0],0.05)
@@ -119,6 +121,24 @@ class TestPermutation(unittest.TestCase):
         self.assertEquals(sum(abs(np_stats-cl_stats) > 0.1), 0)
         self.assertEquals(sum(abs(nv_stats-cl_stats) > 0.1), 0)
         
+    def test_mean_stat(self):
+        N = 20
+        mat = np.array(
+            np.matrix(np.vstack((
+                np.array([0]*(N/4)+[1]*(3*N/4)),
+                np.array([0]*N),
+                np.array([0]*N),
+                np.array([0]*N),
+                np.array([0]*N),
+                np.array([0]*N),
+                np.random.random(N))),dtype=np.float32))
+        cats = np.array([0]*(N/4)+[1]*(3*N/4), dtype=np.float32)
+        d_mat, d_perms = _init_device(mat,cats)
+        mean_stats, pvalues = _two_sample_mean_statistic(d_mat, d_perms)
+        self.assertEquals(mean_stats.argmax(), 0)
+        self.assertEquals(mean_stats.max(), 1)
+        self.assertLess(pvalues.min(), 0.05)
+        
     def test_init_device(self):
         N = 10
         mat = np.array(
@@ -131,13 +151,12 @@ class TestPermutation(unittest.TestCase):
                 np.array([0]*N),
                 np.random.random(N))),dtype=np.float32))
         cats = np.array([0]*(N/2)+[1]*(N/2), dtype=np.float32)
-        d_mat, d_perms, d_reps = _init_device(mat,cats)
+        d_mat, d_perms = _init_device(mat,cats)
         self.assertEquals(type(d_mat), pv.pycore.Matrix)
         self.assertEquals(type(d_perms), pv.pycore.Matrix)
-        self.assertEquals(type(d_reps), pv.pycore.Vector)
+
         self.assertEquals(d_mat.shape, (7, 10) )
         self.assertEquals(d_perms.shape, (10, 2002) )
-        self.assertEquals(d_reps.shape, (10, ) )
         
         
     def test_times(self):
