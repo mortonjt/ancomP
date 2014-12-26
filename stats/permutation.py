@@ -96,6 +96,7 @@ def _np_mean_permutation_test(mat,cats,permutations=1000):
     #_,pvalues,_,_ = multipletests(pvalues)
     return map(np.array,[mean_stat[:,0],pvalues])
 
+#@profile
 def _two_sample_mean_statistic(d_mat, d_perms):
     """
     Calculates a permutative mean statistic just looking at binary classes
@@ -118,14 +119,15 @@ def _two_sample_mean_statistic(d_mat, d_perms):
     num_cats = 2
     n_otus, c = d_perms.shape
     permutations = (c-num_cats) / num_cats
-    d_avgs = pv.Matrix(d_mat * d_perms)
+    d_avgs = d_mat * d_perms
 
     ## Transfer results back to host
     avgs = np.matrix(d_avgs.value)
 
     ## Calculate the mean statistic
-    idx = np.array( [i for i in range(0, (permutations+1) * num_cats, num_cats)] )
+    idx = np.array( [i for i in xrange(0, (permutations+1) * num_cats, num_cats)] )
     mean_stat = abs(avgs[:,idx+1] - avgs[:,idx])
+    
 
     ## Calculate the p-values
     cmps =  mean_stat[:,1:] >= mean_stat[:,0]

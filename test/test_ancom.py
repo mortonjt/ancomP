@@ -14,8 +14,8 @@ from stats.permutation import (_cl_mean_permutation_test,
 import unittest
 class TestANCOM(unittest.TestCase):
     def setUp(self):
-        self.samples = 20
-        self.half_samples = 10
+        self.samples = 80
+        self.half_samples = self.samples/2
         D = self.half_samples
         L = self.samples
         self.data = {'OTU1': map( abs, map(int,
@@ -68,7 +68,7 @@ class TestANCOM(unittest.TestCase):
                                                    )),
              'OTU8': map( abs, map( int,random.normal(10,1,L))),
              'OTU9': map( abs, map( int,random.normal(10,1,L)))}.items()+
-             {'OTU%d'%i: map( abs, map( int,random.normal(10,1,L))) for i in range(0,80)}.items()+
+             {'OTU%d'%i: map( abs, map( int,random.normal(10,1,L))) for i in range(0,40)}.items()+
              {'GRP': array([0]*D + [1]*D)}.items()
              )
     def test_holm(self):
@@ -111,12 +111,6 @@ class TestANCOM(unittest.TestCase):
         t1 = time.time()
         for _ in range(counts):
             sig_otus = _log_compare(mat,cats,
-                                    stat_test=_np_mean_permutation_test,
-                                    permutations=1000)
-        numpy_time = (time.time()-t1)/counts
-        t1 = time.time()
-        for _ in range(counts):
-            sig_otus = _log_compare(mat,cats,
                                     stat_test=_cl_mean_permutation_test,
                                     permutations=1000)
         cl_time = (time.time()-t1)/counts
@@ -125,11 +119,9 @@ class TestANCOM(unittest.TestCase):
             sig_otus = _stationary_log_compare(mat,cats,permutations=1000)
         stationary_time = (time.time()-t1)/counts
 
-        print("Naive time [s]",naive_time)
-        print("Numpy time [s]",numpy_time)
-        print("Opencl time [s]",cl_time)
-        print("Stationary time [s]",stationary_time)
-        self.assertGreater(naive_time,cl_time)
-        self.assertGreater(stationary_time,cl_time)
+        print("Naive permutation time [s]",naive_time)
+        print("Repeated permutation time [s]",cl_time)
+        print("Stationary permutation time [s]",stationary_time)
+        self.assertGreater(cl_time,stationary_time)
 
 unittest.main()

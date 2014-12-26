@@ -78,6 +78,7 @@ def _stationary_log_compare(mat,cats,permutations=1000):
         ratio =  d_logmat[i+1:,:] - outer
         m, p  = _two_sample_mean_statistic(ratio.result, d_perms)
         log_ratio[i,i+1:] = np.matrix(p).transpose()
+        print "OTU: ", i
     return log_ratio
 
 def _log_compare(mat, cats, stat_test=_cl_mean_permutation_test, permutations=1000):

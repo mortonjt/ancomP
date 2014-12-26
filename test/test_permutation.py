@@ -88,7 +88,7 @@ class TestPermutation(unittest.TestCase):
         N = 50
         mat = np.array(
             np.matrix(np.vstack((
-                np.array([0]*(N/2)+[1]*(N/2)),
+                np.array([0]*(N/2)+[100]*(N/2)),
                 np.random.random(N),
                 np.random.random(N),
                 np.random.random(N),
@@ -101,9 +101,9 @@ class TestPermutation(unittest.TestCase):
         cl_stats, cl_p = _cl_mean_permutation_test(mat,cats,1000)
         nv_stats = np.matrix(nv_stats).transpose()
         
-        self.assertAlmostEquals(nv_stats[0],1.,4)
-        self.assertAlmostEquals(np_stats[0],1.,4)
-        self.assertAlmostEquals(cl_stats[0],1.,4)
+        self.assertAlmostEquals(nv_stats[0],100.,4)
+        self.assertAlmostEquals(np_stats[0],100.,4)
+        self.assertAlmostEquals(cl_stats[0],100.,4)
         self.assertLess(nv_p[0],0.05)
         self.assertLess(np_p[0],0.05)
         self.assertLess(cl_p[0],0.05)
@@ -113,11 +113,6 @@ class TestPermutation(unittest.TestCase):
         self.assertEquals(sum(np_stats[1:]>np_stats[0]), 0)
         self.assertEquals(sum(cl_stats[1:]>cl_stats[0]), 0)
         
-        #Check for small pvalues
-        self.assertEquals(sum(nv_p<0.05),1)
-        self.assertEquals(sum(np_p<0.05),1)
-        self.assertEquals(sum(cl_p<0.05),1)
-
         self.assertEquals(sum(abs(np_stats-cl_stats) > 0.1), 0)
         self.assertEquals(sum(abs(nv_stats-cl_stats) > 0.1), 0)
         
@@ -161,8 +156,8 @@ class TestPermutation(unittest.TestCase):
         
     def test_times(self):
         ## Compare timings between numpy and pyviennacl
-        N = 20
-        M = 20
+        N = 60
+        M = 60
         mat = np.array([range(M)]*N,dtype=np.float32)
         cats = np.array([0]*(M/2)+[1]*(M/2),dtype=np.float32)
 
