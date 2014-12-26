@@ -2,8 +2,9 @@ import numpy as np
 from numpy import random, array
 from pandas import DataFrame, Series
 
-from stats.ancom import (_log_compare,
-                         ancom_cl,
+from stats.ancom import (ancom_cl,
+                         _log_compare,
+                         _stationary_log_compare,
                          _init_device,
                          _mean_stat,
                          Holm)
@@ -86,8 +87,7 @@ class TestANCOM(unittest.TestCase):
         self.assertItemsEqual(sig_otus,
                               ['OTU7', 'OTU5', 'OTU4', 'OTU2', 'OTU1', 'GRP'])
 
-    def test_init_device(self):
-        
+    
     # def test_speed(self):
     #     import time
     #     otu_table = DataFrame(self.bigdata)

@@ -49,7 +49,7 @@ def _stationary_log_compare(mat,cats,permutations=1000):
     variable of interest
 
     This is an optimized version to minimize data transfer
-    between the CPU and GPU
+    between the CPU and GPU.  Assumes a stationary set of permutations
     
     otu_table: numpy 2d matrix
     rows = samples
@@ -59,28 +59,20 @@ def _stationary_log_compare(mat,cats,permutations=1000):
     Binary categorical array
     Returns:
     --------
-    log ratio pvalue matrix
+    log ratio: numpy.ndarray
+        pvalue matrix
     """
-    num_cats = 2 #number of distinct categories
     r,c = mat.shape
-    copy_cats = copy.deepcopy(cats)
-    perms = np.array(np.zeros((c,num_cats*(permutations+1)),dtype=cats.dtype))
-    _ones = np.array(np.ones(c),dtype=mat.dtype).transpose()
-    for m in range(permutations+1):
-        perms[:,2*m] = copy_cats
-        perms[:,2*m+1] = _ones - copy_cats
-        np.random.shuffle(copy_cats)
-        
-    ##log ratio calculations
     log_mat = np.log(mat+(1./r))
     log_ratio = np.zeros((r,r),dtype=np.float32)
     
-    d_perms = pv.Matrix(perms)
-    d_log_mat = pv.Matrix(log_mat)
+    d_logmat, d_perms = _init_device(log_mat, cats, permutations)
+    
     for i in range(r-1):
-        d_mat =  d_log_mat[i+1:,:] - d_log_mat[i,:]
-        d_sums = d_mat * d_perms
-        
+        ratio =  d_logmat[i+1:,:]
+        for j in range(i+1,r):
+             ratio[j,:] = ratio[j,:] - d_logmat[i,:]
+        m, p = _two_sample_mean_statistic(ratio, d_perms)
         log_ratio[i,i+1:] = np.matrix(p).transpose()
     return log_ratio
 
