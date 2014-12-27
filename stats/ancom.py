@@ -13,6 +13,7 @@ from pandas import DataFrame, Series
 
 from math import log
 from stats.permutation import (_init_device,
+                               _init_perms,
                                _two_sample_mean_statistic,
                                _cl_mean_permutation_test,
                                _np_mean_permutation_test,
@@ -81,7 +82,7 @@ def _stationary_log_compare(mat,cats,permutations=1000):
         print "OTU: ", i
     return log_ratio
 
-def _log_compare(mat, cats, stat_test=_cl_mean_permutation_test, permutations=1000):
+def _log_compare(mat, cats, stat_test=_np_mean_permutation_test, permutations=1000):
     """
     Calculates pairwise log ratios between all otus
     and performs a permutation tests to determine if there is a
@@ -105,9 +106,10 @@ def _log_compare(mat, cats, stat_test=_cl_mean_permutation_test, permutations=10
     r,c = mat.shape
     log_mat = np.log(mat+(1./r))
     log_ratio = np.zeros((r,r),dtype=np.float32)
+    perms = _init_perms(cats,permutations)
     for i in range(r-1):
         ratio =  np.array(np.matrix(log_mat[i+1:,:]) - np.matrix(log_mat[i,:]))
-        m, p = stat_test(ratio,cats,permutations)
+        m, p = stat_test(ratio,cats,permutations,perms)
         log_ratio[i,i+1:] = np.squeeze(np.array(np.matrix(p).transpose()))
     return log_ratio
 
@@ -137,7 +139,10 @@ def ancom_cl(otu_table,cats,alpha,permutations=1000):
     mat = mat.astype(np.float32)
     cats = cats.astype(np.float32)
     
-    _logratio_mat = _stationary_log_compare(mat,cats,permutations)
+    #_logratio_mat = _stationary_log_compare(mat,cats,permutations)
+    _logratio_mat = _log_compare(mat, cats,
+                                 stat_test = _np_mean_permutation_test,
+                                 permutations = permutations)
     logratio_mat = _logratio_mat + _logratio_mat.transpose()
     n_otu,n_samp = mat.shape
     ##Multiple comparisons

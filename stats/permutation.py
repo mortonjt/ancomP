@@ -6,6 +6,50 @@ from time import time
 import copy
 #from statsmodels.sandbox.stats.multicomp import multipletests 
 
+def _init_perms(cats, permutations=1000):
+    """
+    Creates a permutation matrix
+    
+    cats: numpy.array
+       List of binary class assignments
+    """
+    num_cats = 2 #number of distinct categories
+    c = len(cats)
+    copy_cats = copy.deepcopy(cats)
+    copy_cats = np.matrix(copy_cats).transpose() #convert to matrix
+    perms = np.matrix(np.zeros((c,num_cats*(permutations+1))))
+    _ones = np.matrix(np.ones(c)).transpose()
+    for m in range(permutations+1):
+        perms[:,2*m] = copy_cats 
+        perms[:,2*m+1] = _ones - copy_cats 
+        np.random.shuffle(copy_cats)
+    return perms
+
+def _init_device(mat, cats, permutations=1000):
+    """
+    Creates a permutation matrix and loads it on device
+    
+    mat: numpy.ndarray
+       Feature matrix
+    cats: numpy.array
+       List of binary class assignments
+    """
+    num_cats = 2 #number of distinct categories
+    r,c = mat.shape
+    copy_cats = copy.deepcopy(cats)
+    perms = np.array(np.zeros((c,num_cats*(permutations+1)),dtype=mat.dtype))
+    _samp_ones = np.array(np.ones(c),dtype=mat.dtype).transpose()
+    _feat_ones = np.array(np.ones(r),dtype=mat.dtype).transpose()
+    for m in range(permutations+1):
+        perms[:,2*m] = copy_cats / float(copy_cats.sum())
+        perms[:,2*m+1] = (_samp_ones - copy_cats) / float((_samp_ones - copy_cats).sum())
+        np.random.shuffle(copy_cats)
+    
+    d_perms = pv.Matrix(perms)
+    d_mat = pv.Matrix(mat)
+    return d_mat, d_perms
+
+
 def _naive_mean_permutation_test(mat,cats,permutations=1000):
     """
     mat: numpy 2-d matrix
@@ -47,9 +91,10 @@ def _naive_mean_permutation_test(mat,cats,permutations=1000):
     #_,pvalues,_,_ = multipletests(pvalues)
     return test_stats, pvalues
 
-def _np_mean_permutation_test(mat,cats,permutations=1000):
+
+def _np_mean_permutation_test(mat, cats, permutations=1000, perms = None):
     """
-    mat: numpy 2-d matrix
+    mat: numpy.ndarray or scipy.sparse.*
          columns: features (e.g. OTUs)
          rows: samples
          matrix of features
@@ -72,22 +117,16 @@ def _np_mean_permutation_test(mat,cats,permutations=1000):
     ## Create a permutation matrix
     num_cats = 2 #number of distinct categories
     r,c = mat.shape
-    copy_cats = copy.deepcopy(cats)
-    copy_cats = np.matrix(copy_cats).transpose() #convert to matrix
-    perms = np.matrix(np.zeros((c,num_cats*(permutations+1))))
-    _ones = np.matrix(np.ones(c)).transpose()
-    for m in range(permutations+1):
-        perms[:,2*m] = copy_cats 
-        perms[:,2*m+1] = _ones - copy_cats 
-        np.random.shuffle(copy_cats)
-
+    if perms == None:
+        perms = _init_perms(cats, permutations)
+        
     ## Perform matrix multiplication on data matrix
     ## and calculate averages
     sums = mat * perms
     avgs = sums / perms.sum(axis=0)
     ## Calculate the mean statistic
-    idx = np.array([i for i in range(0,(permutations+1)*num_cats,2)])
-    mean_stat = abs(avgs[:,idx+1] - avgs[:,idx])
+    idx = np.array([i for i in range(0, (permutations+1)*num_cats,2)])
+    mean_stat = abs(avgs[:, idx+1] - avgs[:, idx])
 
     ## Calculate the p-values
     cmps =  mean_stat[:,1:] >= mean_stat[:,0]
@@ -126,8 +165,7 @@ def _two_sample_mean_statistic(d_mat, d_perms):
 
     ## Calculate the mean statistic
     idx = np.array( [i for i in xrange(0, (permutations+1) * num_cats, num_cats)] )
-    mean_stat = abs(avgs[:,idx+1] - avgs[:,idx])
-    
+    mean_stat = abs(avgs[:,idx+1] - avgs[:,idx])    
 
     ## Calculate the p-values
     cmps =  mean_stat[:,1:] >= mean_stat[:,0]
@@ -135,27 +173,6 @@ def _two_sample_mean_statistic(d_mat, d_perms):
     test_mean_stats = mean_stat[:,0]
     return map(np.array, [test_mean_stats,pvalues] )
 
-def _init_device(mat, cats, permutations=1000):
-    """
-    mat: numpy.ndarray
-       Feature matrix
-    cats: numpy.array
-       List of binary class assignments
-    """
-    num_cats = 2 #number of distinct categories
-    r,c = mat.shape
-    copy_cats = copy.deepcopy(cats)
-    perms = np.array(np.zeros((c,num_cats*(permutations+1)),dtype=mat.dtype))
-    _samp_ones = np.array(np.ones(c),dtype=mat.dtype).transpose()
-    _feat_ones = np.array(np.ones(r),dtype=mat.dtype).transpose()
-    for m in range(permutations+1):
-        perms[:,2*m] = copy_cats / float(copy_cats.sum())
-        perms[:,2*m+1] = (_samp_ones - copy_cats) / float((_samp_ones - copy_cats).sum())
-        np.random.shuffle(copy_cats)
-    
-    d_perms = pv.Matrix(perms)
-    d_mat = pv.Matrix(mat)
-    return d_mat, d_perms
 
 def _cl_mean_permutation_test(mat, cats, permutations=1000, num_cats=2):
     """

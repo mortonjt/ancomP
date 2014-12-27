@@ -71,6 +71,7 @@ class TestANCOM(unittest.TestCase):
              {'OTU%d'%i: map( abs, map( int,random.normal(10,1,L))) for i in range(0,40)}.items()+
              {'GRP': array([0]*D + [1]*D)}.items()
              )
+        
     def test_holm(self):
         p = [0.005, 0.011, 0.02, 0.04, 0.13]
         corrected_p = p * np.arange(1,6)[::-1]
@@ -104,13 +105,13 @@ class TestANCOM(unittest.TestCase):
         counts = 3
         t1 = time.time()
         for _ in range(counts):
-            sig_otus = _log_compare(mat,cats,
-                                    stat_test=_naive_mean_permutation_test,
+            sig_otus = _log_compare(mat, cats,
+                                    stat_test=_np_mean_permutation_test,
                                     permutations=1000)
-        naive_time = (time.time()-t1)/counts
+        np_time = (time.time()-t1)/counts
         t1 = time.time()
         for _ in range(counts):
-            sig_otus = _log_compare(mat,cats,
+            sig_otus = _log_compare(mat, cats,
                                     stat_test=_cl_mean_permutation_test,
                                     permutations=1000)
         cl_time = (time.time()-t1)/counts
@@ -119,7 +120,7 @@ class TestANCOM(unittest.TestCase):
             sig_otus = _stationary_log_compare(mat,cats,permutations=1000)
         stationary_time = (time.time()-t1)/counts
 
-        print("Naive permutation time [s]",naive_time)
+        print("Numpy permutation time [s]",np_time)
         print("Repeated permutation time [s]",cl_time)
         print("Stationary permutation time [s]",stationary_time)
         self.assertGreater(cl_time,stationary_time)

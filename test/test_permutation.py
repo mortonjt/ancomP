@@ -2,6 +2,7 @@
 import pyviennacl as pv
 import pyopencl as cl
 import numpy as np
+import scipy.sparse as sp
 import pandas as pd
 from time import time
 import copy
@@ -12,6 +13,7 @@ from stats.permutation import (_naive_mean_permutation_test,
                                _np_mean_permutation_test,
                                _cl_mean_permutation_test,
                                _init_device,
+                               _init_perms,
                                _two_sample_mean_statistic)
 
 class TestPermutation(unittest.TestCase):
@@ -160,7 +162,7 @@ class TestPermutation(unittest.TestCase):
         M = 60
         mat = np.array([range(M)]*N,dtype=np.float32)
         cats = np.array([0]*(M/2)+[1]*(M/2),dtype=np.float32)
-
+        perms = _init_perms(cats,1000)
         t1 = time()
         counts = 3
         for _ in range(counts):
@@ -171,12 +173,18 @@ class TestPermutation(unittest.TestCase):
             np_stats, np_p = _np_mean_permutation_test(mat,cats,1000)
         np_time = (time()-t1)/counts
         t1 = time()
+        smat = sp.csr_matrix(mat)
+        for _ in range(counts):
+            sp_stats, sp_p = _np_mean_permutation_test(mat,cats,1000)
+        sp_time = (time()-t1)/counts
+        t1 = time()
         for _ in range(counts):
             cl_stats, cl_p = _cl_mean_permutation_test(mat,cats,1000)
         cl_time = (time()-t1)/counts
 
         print "Naive time [s]:", nv_time
         print "Numpy time [s]:", np_time
+        print "Scipy time [s]:", sp_time
         print "GPU compute [s]:", cl_time
         self.assertGreater(nv_time,cl_time)
         self.assertGreater(np_time,cl_time)
