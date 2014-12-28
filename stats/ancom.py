@@ -14,7 +14,8 @@ from pandas import DataFrame, Series
 from math import log
 from stats.permutation import (_init_device,
                                _init_perms,
-                               _two_sample_mean_statistic,
+                               _np_two_sample_mean_statistic,
+                               _cl_two_sample_mean_statistic,
                                _cl_mean_permutation_test,
                                _np_mean_permutation_test,
                                _naive_mean_permutation_test)
@@ -45,7 +46,7 @@ def Holm(p):
     return holm_p
  
 
-def _stationary_log_compare(mat,cats,permutations=1000):
+def _stationary_log_compare(mat,cats,permutations=1000,gpu=False):
     """
     Calculates pairwise log ratios between all otus
     and performs a permutation tests to determine if there is a
@@ -69,15 +70,24 @@ def _stationary_log_compare(mat,cats,permutations=1000):
     r,c = mat.shape
     log_mat = np.log(mat+(1./r))
     log_ratio = np.zeros((r,r),dtype=mat.dtype)
+    if gpu:
+        log_mat, perms = _init_device(log_mat, cats, permutations)
+        _ones = pv.Matrix(np.ones((r-1,2),dtype=mat.dtype))[:,1] #hacky way to make 1-D matrices
+    else:
+        perms = _init_perms(cats, permutations)
+        perms = perms.astype(mat.dtype)
+        _ones = np.matrix(np.ones(r-1,dtype=mat.dtype)).transpose()
     
-    d_logmat, d_perms = _init_device(log_mat, cats, permutations)
-    _ones = pv.Matrix(np.ones((r-1,2),dtype=mat.dtype))[:,1] #hacky way to make 1-D matrices
     for i in range(r-1):        
-        ## Perform outer product to create copies of d_logmat[i,:]
+        ## Perform outer product to create copies of log_mat[i,:]
         ## similar to np.tile
-        outer = _ones[i:] * d_logmat[i,:]
-        ratio =  d_logmat[i+1:,:] - outer
-        m, p  = _two_sample_mean_statistic(ratio.result, d_perms)
+        outer = _ones[i:] * log_mat[i,:]
+        ratio =  log_mat[i+1:,:] - outer
+        if gpu:
+            m, p  = _cl_two_sample_mean_statistic(ratio.result, perms)
+        else:
+            m, p  = _np_two_sample_mean_statistic(ratio, perms)
+            
         log_ratio[i,i+1:] = np.matrix(p).transpose()
         print "OTU: ", i
     return log_ratio
@@ -106,14 +116,13 @@ def _log_compare(mat, cats, stat_test=_np_mean_permutation_test, permutations=10
     r,c = mat.shape
     log_mat = np.log(mat+(1./r))
     log_ratio = np.zeros((r,r),dtype=np.float32)
-    perms = _init_perms(cats,permutations)
     for i in range(r-1):
         ratio =  np.array(np.matrix(log_mat[i+1:,:]) - np.matrix(log_mat[i,:]))
-        m, p = stat_test(ratio,cats,permutations,perms)
+        m, p = stat_test(ratio,cats,permutations)
         log_ratio[i,i+1:] = np.squeeze(np.array(np.matrix(p).transpose()))
     return log_ratio
 
-def ancom_cl(otu_table,cats,alpha,permutations=1000):
+def ancom_cl(otu_table,cats,alpha,permutations=1000,multicorr = False,gpu=False):
     """
     Calculates pairwise log ratios between all otus
     and performs permutation tests to determine if there is a
@@ -139,17 +148,18 @@ def ancom_cl(otu_table,cats,alpha,permutations=1000):
     mat = mat.astype(np.float32)
     cats = cats.astype(np.float32)
     
-    #_logratio_mat = _stationary_log_compare(mat,cats,permutations)
-    _logratio_mat = _log_compare(mat, cats,
-                                 stat_test = _np_mean_permutation_test,
-                                 permutations = permutations)
+    _logratio_mat = _stationary_log_compare(mat,cats,permutations,gpu)
+    # _logratio_mat = _log_compare(mat, cats,
+    #                              stat_test = _np_mean_permutation_test,
+    #                              permutations = permutations)
     logratio_mat = _logratio_mat + _logratio_mat.transpose()
+    np.savetxt("log_ratio.gz",logratio_mat)
     n_otu,n_samp = mat.shape
     ##Multiple comparisons
-    for i in range(n_otu):
-         pvalues = Holm(logratio_mat[i,:])
-         
-         logratio_mat[i,:] = pvalues
+    if multicorr:
+        for i in range(n_otu):
+            pvalues = Holm(logratio_mat[i,:])
+            logratio_mat[i,:] = pvalues
 
     W = np.zeros(n_otu)
     for i in range(n_otu):

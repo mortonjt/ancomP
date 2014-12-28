@@ -12,16 +12,18 @@ def _init_perms(cats, permutations=1000):
     
     cats: numpy.array
        List of binary class assignments
+    permutations: int
+       Number of permutations for permutation test
     """
     num_cats = 2 #number of distinct categories
     c = len(cats)
     copy_cats = copy.deepcopy(cats)
-    copy_cats = np.matrix(copy_cats).transpose() #convert to matrix
-    perms = np.matrix(np.zeros((c,num_cats*(permutations+1))))
-    _ones = np.matrix(np.ones(c)).transpose()
+    perms = np.array(np.zeros((c,num_cats*(permutations+1)),dtype=cats.dtype))
+    _samp_ones = np.array(np.ones(c),dtype=cats.dtype).transpose()
     for m in range(permutations+1):
-        perms[:,2*m] = copy_cats 
-        perms[:,2*m+1] = _ones - copy_cats 
+        #Perform division to make mean calculation easier
+        perms[:,2*m] = copy_cats / float(copy_cats.sum())
+        perms[:,2*m+1] = (_samp_ones - copy_cats) / float((_samp_ones - copy_cats).sum())
         np.random.shuffle(copy_cats)
     return perms
 
@@ -33,18 +35,11 @@ def _init_device(mat, cats, permutations=1000):
        Feature matrix
     cats: numpy.array
        List of binary class assignments
+    permutations: int
+       Number of permutations for permutation test
     """
-    num_cats = 2 #number of distinct categories
-    r,c = mat.shape
-    copy_cats = copy.deepcopy(cats)
-    perms = np.array(np.zeros((c,num_cats*(permutations+1)),dtype=mat.dtype))
-    _samp_ones = np.array(np.ones(c),dtype=mat.dtype).transpose()
-    _feat_ones = np.array(np.ones(r),dtype=mat.dtype).transpose()
-    for m in range(permutations+1):
-        perms[:,2*m] = copy_cats / float(copy_cats.sum())
-        perms[:,2*m+1] = (_samp_ones - copy_cats) / float((_samp_ones - copy_cats).sum())
-        np.random.shuffle(copy_cats)
-    
+    perms = _init_perms(cats,permutations)
+    perms = perms.astype(mat.dtype)
     d_perms = pv.Matrix(perms)
     d_mat = pv.Matrix(mat)
     return d_mat, d_perms
@@ -61,8 +56,8 @@ def _naive_mean_permutation_test(mat,cats,permutations=1000):
 
     Note: only works on binary classes now
     
-    Return
-    ------
+    Returns
+    =======
     test_stats:
         List of mean test statistics
     pvalues:
@@ -91,8 +86,7 @@ def _naive_mean_permutation_test(mat,cats,permutations=1000):
     #_,pvalues,_,_ = multipletests(pvalues)
     return test_stats, pvalues
 
-
-def _np_mean_permutation_test(mat, cats, permutations=1000, perms = None):
+def _np_mean_permutation_test(mat, cats, permutations=1000):
     """
     mat: numpy.ndarray or scipy.sparse.*
          columns: features (e.g. OTUs)
@@ -100,7 +94,8 @@ def _np_mean_permutation_test(mat, cats, permutations=1000, perms = None):
          matrix of features
     cats: numpy array
          Array of categories to run group signficance on
-
+    permutations: int
+         Number of permutations to calculate
     Note: only works on binary classes now
     
     Return
@@ -113,17 +108,45 @@ def _np_mean_permutation_test(mat, cats, permutations=1000, perms = None):
     This module will conduct a mean permutation test using
     numpy matrix algebra
     """
+    perms = _init_perms(cats, permutations)
+    _mat = np.matrix(mat)
+    _perms = np.matrix(perms)
+    return _np_two_sample_mean_statistic(_mat, _perms)
+
+def _np_two_sample_mean_statistic(mat, perms):
+    """
+    Calculates a permutative mean statistic just looking at binary classes
+
+    mat: numpy.ndarray or scipy.sparse.*
+         columns: features (e.g. OTUs)
+         rows: samples
+         matrix of features
+    perms: numpy.ndarray
+         columns: permutations of samples
+         rows: features    
+         Permutative matrix
+
+    Note: only works on binary classes now
+    
+    Returns
+    =======
+    test_stats:
+        List of mean test statistics
+    pvalues:
+        List of corrected p-values
+
+    This module will conduct a mean permutation test using
+    numpy matrix algebra
+    """
     
     ## Create a permutation matrix
     num_cats = 2 #number of distinct categories
-    r,c = mat.shape
-    if perms == None:
-        perms = _init_perms(cats, permutations)
+    n_otus, c = perms.shape
+    permutations = (c-num_cats) / num_cats
         
     ## Perform matrix multiplication on data matrix
     ## and calculate averages
-    sums = mat * perms
-    avgs = sums / perms.sum(axis=0)
+    avgs = mat * perms
     ## Calculate the mean statistic
     idx = np.array([i for i in range(0, (permutations+1)*num_cats,2)])
     mean_stat = abs(avgs[:, idx+1] - avgs[:, idx])
@@ -136,7 +159,7 @@ def _np_mean_permutation_test(mat, cats, permutations=1000, perms = None):
     return map(np.array,[mean_stat[:,0],pvalues])
 
 #@profile
-def _two_sample_mean_statistic(d_mat, d_perms):
+def _cl_two_sample_mean_statistic(d_mat, d_perms):
     """
     Calculates a permutative mean statistic just looking at binary classes
     
@@ -174,7 +197,7 @@ def _two_sample_mean_statistic(d_mat, d_perms):
     return map(np.array, [test_mean_stats,pvalues] )
 
 
-def _cl_mean_permutation_test(mat, cats, permutations=1000, num_cats=2):
+def _cl_mean_permutation_test(mat, cats, permutations=1000):
     """
     mat: numpy 2-d array,  numpy.float32
          columns: features (e.g. OTUs)
@@ -196,7 +219,7 @@ def _cl_mean_permutation_test(mat, cats, permutations=1000, num_cats=2):
     opencl matrix multiplication
     """
     d_mat, d_perms = _init_device(mat, cats, permutations)
-    return _two_sample_mean_statistic(d_mat, d_perms)
+    return _cl_two_sample_mean_statistic(d_mat, d_perms)
 
 
     

@@ -117,12 +117,17 @@ class TestANCOM(unittest.TestCase):
         cl_time = (time.time()-t1)/counts
         t1 = time.time()
         for _ in range(counts):
-            sig_otus = _stationary_log_compare(mat,cats,permutations=1000)
-        stationary_time = (time.time()-t1)/counts
+            sig_otus = _stationary_log_compare(mat,cats,permutations=1000,gpu=False)
+        np_s_time = (time.time()-t1)/counts
 
-        print("Numpy permutation time [s]",np_time)
-        print("Repeated permutation time [s]",cl_time)
-        print("Stationary permutation time [s]",stationary_time)
-        self.assertGreater(cl_time,stationary_time)
+        t1 = time.time()
+        for _ in range(counts):
+            sig_otus = _stationary_log_compare(mat,cats,permutations=1000,gpu=True)
+        cl_s_time = (time.time()-t1)/counts
+
+        print("Repeated numpy permutation time [s]",np_time)
+        print("Repeated opencl permutation time [s]",cl_time)
+        print("Stationary numpy permutation time [s]",np_s_time)
+        print("Stationary opencl permutation time [s]",cl_s_time)
 
 unittest.main()

@@ -14,7 +14,8 @@ from stats.permutation import (_naive_mean_permutation_test,
                                _cl_mean_permutation_test,
                                _init_device,
                                _init_perms,
-                               _two_sample_mean_statistic)
+                               _np_two_sample_mean_statistic,
+                               _cl_two_sample_mean_statistic)
 
 class TestPermutation(unittest.TestCase):
 
@@ -35,9 +36,9 @@ class TestPermutation(unittest.TestCase):
         self.assertEquals(sum(abs(nv_stats-np_stats) > 0.1), 0)
         self.assertEquals(sum(abs(nv_stats-cl_stats) > 0.1), 0)
         #Check test statistics
-        self.assertAlmostEquals(sum(nv_stats-5),0,0.01)
-        self.assertAlmostEquals(sum(np_stats-5),0,0.01)
-        self.assertAlmostEquals(sum(cl_stats-5),0,0.01)
+        self.assertAlmostEquals(sum(nv_stats-5),0,4)
+        self.assertAlmostEquals(sum(np_stats-5),0,4)
+        self.assertAlmostEquals(sum(cl_stats-5),0,4)
         #Check for small pvalues
         self.assertEquals(sum(nv_p>0.05),0)
         self.assertEquals(sum(np_p>0.05),0)
@@ -131,11 +132,17 @@ class TestPermutation(unittest.TestCase):
                 np.random.random(N))),dtype=np.float32))
         cats = np.array([0]*(N/4)+[1]*(3*N/4), dtype=np.float32)
         d_mat, d_perms = _init_device(mat,cats)
-        mean_stats, pvalues = _two_sample_mean_statistic(d_mat, d_perms)
+        mean_stats, pvalues = _cl_two_sample_mean_statistic(d_mat, d_perms)
         self.assertEquals(mean_stats.argmax(), 0)
         self.assertEquals(mean_stats.max(), 1)
         self.assertLess(pvalues.min(), 0.05)
-        
+        perms = _init_perms(cats)
+        mat, perms = np.matrix(mat), np.matrix(perms)
+        mean_stats, pvalues = _np_two_sample_mean_statistic(mat, perms)
+        self.assertEquals(mean_stats.argmax(), 0)
+        self.assertEquals(mean_stats.max(), 1)
+        self.assertLess(pvalues.min(), 0.05)
+
     def test_init_device(self):
         N = 10
         mat = np.array(
@@ -186,7 +193,20 @@ class TestPermutation(unittest.TestCase):
         print "Numpy time [s]:", np_time
         print "Scipy time [s]:", sp_time
         print "GPU compute [s]:", cl_time
-        self.assertGreater(nv_time,cl_time)
-        self.assertGreater(np_time,cl_time)
+
+        _mat = np.matrix(mat)
+        _perms = np.matrix(_init_perms(cats))
+        t1 = time()
+        for _ in range(counts):
+            np_stats, np_p = _np_two_sample_mean_statistic(_mat,_perms)
+        np_time = (time()-t1)/counts
+        _mat = pv.Matrix(mat)
+        _perms = pv.Matrix(_init_perms(cats))
+        t1 = time()
+        for _ in range(counts):
+            cl_stats, cl_p = _cl_two_sample_mean_statistic(_mat,_perms)
+        cl_time = (time()-t1)/counts
+        print "Numpy time (w/o transfer)[s]:", np_time
+        print "GPU compute (w/o transfer)[s]:", cl_time
         
 unittest.main()
