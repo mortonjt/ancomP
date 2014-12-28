@@ -13,7 +13,7 @@ from pandas import DataFrame, Series
 
 from math import log
 from stats.permutation import (_init_device,
-                               _init_perms,
+                               _init_reciprocal_perms,
                                _np_two_sample_mean_statistic,
                                _cl_two_sample_mean_statistic,
                                _cl_mean_permutation_test,
@@ -74,7 +74,7 @@ def _stationary_log_compare(mat,cats,permutations=1000,gpu=False):
         log_mat, perms = _init_device(log_mat, cats, permutations)
         _ones = pv.Matrix(np.ones((r-1,2),dtype=mat.dtype))[:,1] #hacky way to make 1-D matrices
     else:
-        perms = _init_perms(cats, permutations)
+        perms = _init_reciprocal_perms(cats, permutations)
         perms = perms.astype(mat.dtype)
         _ones = np.matrix(np.ones(r-1,dtype=mat.dtype)).transpose()
     

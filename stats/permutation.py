@@ -6,9 +6,9 @@ from time import time
 import copy
 #from statsmodels.sandbox.stats.multicomp import multipletests 
 
-def _init_perms(cats, permutations=1000):
+def _init_reciprocal_perms(cats, permutations=1000):
     """
-    Creates a permutation matrix
+    Creates a reciprocal permutation matrix
     
     cats: numpy.array
        List of binary class assignments
