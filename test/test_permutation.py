@@ -13,7 +13,7 @@ from stats.permutation import (_naive_mean_permutation_test,
                                _np_mean_permutation_test,
                                _cl_mean_permutation_test,
                                _init_device,
-                               _init_perms,
+                               _init_reciprocal_perms,
                                _np_two_sample_mean_statistic,
                                _cl_two_sample_mean_statistic)
 
@@ -136,7 +136,7 @@ class TestPermutation(unittest.TestCase):
         self.assertEquals(mean_stats.argmax(), 0)
         self.assertEquals(mean_stats.max(), 1)
         self.assertLess(pvalues.min(), 0.05)
-        perms = _init_perms(cats)
+        perms = _init_reciprocal_perms(cats)
         mat, perms = np.matrix(mat), np.matrix(perms)
         mean_stats, pvalues = _np_two_sample_mean_statistic(mat, perms)
         self.assertEquals(mean_stats.argmax(), 0)
@@ -169,7 +169,7 @@ class TestPermutation(unittest.TestCase):
         M = 60
         mat = np.array([range(M)]*N,dtype=np.float32)
         cats = np.array([0]*(M/2)+[1]*(M/2),dtype=np.float32)
-        perms = _init_perms(cats,1000)
+        perms = _init_reciprocal_perms(cats,1000)
         t1 = time()
         counts = 3
         for _ in range(counts):
@@ -195,13 +195,13 @@ class TestPermutation(unittest.TestCase):
         print "GPU compute [s]:", cl_time
 
         _mat = np.matrix(mat)
-        _perms = np.matrix(_init_perms(cats))
+        _perms = np.matrix(_init_reciprocal_perms(cats))
         t1 = time()
         for _ in range(counts):
             np_stats, np_p = _np_two_sample_mean_statistic(_mat,_perms)
         np_time = (time()-t1)/counts
         _mat = pv.Matrix(mat)
-        _perms = pv.Matrix(_init_perms(cats))
+        _perms = pv.Matrix(_init_reciprocal_perms(cats))
         t1 = time()
         for _ in range(counts):
             cl_stats, cl_p = _cl_two_sample_mean_statistic(_mat,_perms)

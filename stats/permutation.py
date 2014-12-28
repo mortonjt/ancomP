@@ -6,6 +6,26 @@ from time import time
 import copy
 #from statsmodels.sandbox.stats.multicomp import multipletests 
 
+def _init_perms(vec, permutations=1000):
+    """
+    Creates a permutation matrix
+    
+    vec: numpy.array
+       Array of values to be permuted
+    permutations: int
+       Number of permutations for permutation test
+
+    Note: This can only handle binary classes now
+    """
+    c = len(vec)
+    copy_vec = copy.deepcopy(vec)
+    perms = np.array(np.zeros((c, permutations+1), dtype=vec.dtype))
+    _samp_ones = np.array(np.ones(c), dtype=vec.dtype).transpose()
+    for m in range(permutations+1):
+        perms[:,m] = copy_vec
+        np.random.shuffle(copy_vec)
+    return perms
+    
 def _init_reciprocal_perms(cats, permutations=1000):
     """
     Creates a reciprocal permutation matrix
@@ -14,12 +34,14 @@ def _init_reciprocal_perms(cats, permutations=1000):
        List of binary class assignments
     permutations: int
        Number of permutations for permutation test
+
+    Note: This can only handle binary classes now
     """
     num_cats = 2 #number of distinct categories
     c = len(cats)
     copy_cats = copy.deepcopy(cats)
-    perms = np.array(np.zeros((c,num_cats*(permutations+1)),dtype=cats.dtype))
-    _samp_ones = np.array(np.ones(c),dtype=cats.dtype).transpose()
+    perms = np.array(np.zeros((c, num_cats*(permutations+1)), dtype=cats.dtype))
+    _samp_ones = np.array(np.ones(c), dtype=cats.dtype).transpose()
     for m in range(permutations+1):
         #Perform division to make mean calculation easier
         perms[:,2*m] = copy_cats / float(copy_cats.sum())
@@ -38,7 +60,7 @@ def _init_device(mat, cats, permutations=1000):
     permutations: int
        Number of permutations for permutation test
     """
-    perms = _init_perms(cats,permutations)
+    perms = _init_reciprocal_perms(cats,permutations)
     perms = perms.astype(mat.dtype)
     d_perms = pv.Matrix(perms)
     d_mat = pv.Matrix(mat)
@@ -108,7 +130,7 @@ def _np_mean_permutation_test(mat, cats, permutations=1000):
     This module will conduct a mean permutation test using
     numpy matrix algebra
     """
-    perms = _init_perms(cats, permutations)
+    perms = _init_reciprocal_perms(cats, permutations)
     _mat = np.matrix(mat)
     _perms = np.matrix(perms)
     return _np_two_sample_mean_statistic(_mat, _perms)
