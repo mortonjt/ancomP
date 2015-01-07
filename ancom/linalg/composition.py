@@ -8,7 +8,7 @@ http://www.sediment.uni-goettingen.de/staff/tolosana/extra/CoDa.pdf
 """
 
 import numpy as np
-import scipy.stats as sps
+
 import numpy.linalg as nl
 
 
@@ -59,7 +59,13 @@ class CompositionMatrix():
         assert num_feats == vec.shape[0]
         mat = np.multiply(self.mat, vec)
         return CompositionMatrix(mat)
-        
+
+    def __iadd__(self,vec):
+        """
+        TODO
+        """
+        pass
+    
     def __mul__(self,alpha):
         """
         Performs the power perturbation operation
@@ -68,6 +74,12 @@ class CompositionMatrix():
         """
         mat = np.power(self.mat,alpha)
         return CompositionMatrix(mat)
+
+    def __imul__(self,vec):
+        """
+        TODO
+        """
+        pass
     
     def dot(self,amat):
         """
@@ -102,10 +114,10 @@ class CompositionMatrix():
         clr: numpy.ndarray
         clr transformed matrix
         """
-        gm = sps.gmean(self.mat, axis=1)
         lmat = np.log(self.mat) # Need to account for zeros
-        clr = lmat-gm
-        return clr
+        gm = lmat.mean(axis = 1)
+        _clr = lmat - gm
+        return _clr
 
     def ilr(self):
         """

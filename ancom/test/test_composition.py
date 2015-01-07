@@ -1,5 +1,6 @@
 
 import numpy as np
+import scipy.stats as sps
 from ancom.linalg.composition import (CompositionMatrix,
                                       zero_replacement,
                                       closure)
@@ -92,15 +93,15 @@ class TestComposition(unittest.TestCase):
             dtype=np.float32)
         amat = CompositionMatrix(mat)
         cmat = amat.clr()
-        np_test.assert_array_almost_equal(pmat.mat,
-                          np.matrix(np.vstack((
-                              np.log(np.array([.2, .2, .6]) / np.exp(sum(np.log(np.array([.2, .2, .6])))/3)),
-                              np.log(np.array([.4, .4, .2]) / np.exp(sum(np.log(np.array([.4, .4, .2])))/3)))),
-                              dtype=np.float32))
-        
-        
-    def test_svd(self):
-        pass
+        A = np.array([.2, .2, .6])
+        B = np.array([.4, .4, .2])
 
+        np_test.assert_array_almost_equal(cmat,
+                          np.matrix(np.vstack((
+                              np.log(A / np.exp(np.log(A).mean())) ,
+                              np.log(B / np.exp(np.log(B).mean())) )),
+                                    dtype=np.float32))
+        
+        
 
 unittest.main()
