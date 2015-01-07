@@ -55,18 +55,18 @@ class CompositionMatrix():
         vec: numpy.ndarray
            perturbation vector
         """
-        num_samps, num_feats = mat.shape
-        assert num_feats == len(vec)
-        mat = numpy.multiply(self.mat, amat.mat)
+        num_samps, num_feats = self.mat.shape
+        assert num_feats == vec.shape[0]
+        mat = np.multiply(self.mat, vec)
         return CompositionMatrix(mat)
         
-    def __mult__(self,alpha):
+    def __mul__(self,alpha):
         """
         Performs the power perturbation operation
 
         alpha: numpy.float
         """
-        mat = numpy.power(self.mat,alpha)
+        mat = np.power(self.mat,alpha)
         return CompositionMatrix(mat)
     
     def dot(self,amat):
