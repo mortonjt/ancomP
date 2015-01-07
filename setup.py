@@ -24,9 +24,7 @@ setup(
     license='MIT',
     include_dirs=[np.get_include()],
     install_requires=[
-          'rpy2',
           'pandas',
-          'statsmodels',
           'pyopencl',
           'pyviennacl',
           'numpy >= 1.7',
