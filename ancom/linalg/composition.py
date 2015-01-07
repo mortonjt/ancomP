@@ -71,7 +71,22 @@ class CompositionMatrix():
     
     def dot(self,amat):
         """
+        TODO
         Performs inner product
+        """
+        pass
+
+    def norm(self,amat):
+        """
+        TODO
+        Calculates norm
+        """
+        pass
+
+    def distance(self,amat):
+        """
+        TODO
+        Calculates Aitchison distance
         """
         pass
                   

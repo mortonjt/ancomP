@@ -86,7 +86,19 @@ class TestComposition(unittest.TestCase):
                               dtype=np.float32))
         
     def test_clr(self):
-        pass
+        mat = np.matrix(np.vstack((
+            np.array([.2, .2, .6]),
+            np.array([.4, .4, .2]))),
+            dtype=np.float32)
+        amat = CompositionMatrix(mat)
+        cmat = amat.clr()
+        np_test.assert_array_almost_equal(pmat.mat,
+                          np.matrix(np.vstack((
+                              np.log(np.array([.2, .2, .6]) / np.exp(sum(np.log(np.array([.2, .2, .6])))/3)),
+                              np.log(np.array([.4, .4, .2]) / np.exp(sum(np.log(np.array([.4, .4, .2])))/3)))),
+                              dtype=np.float32))
+        
+        
     def test_svd(self):
         pass
 
