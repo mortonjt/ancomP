@@ -19,7 +19,7 @@ setup(
     author = "Jamie Morton",
     author_email = "jamietmorton@gmail.com",
     description = ("A GPU accelerated version of ANCOM"),
-    packages=['stats','test','bin'],
+    packages=find_packages(),
     long_description=read('README.md'),
     license='MIT',
     include_dirs=[np.get_include()],
