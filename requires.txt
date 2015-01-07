@@ -1,5 +1,6 @@
 numpy >= 1.7
 scipy >= 0.13.0
+matplotlib >= 1.4.0
 pandas
 pyopencl
 pyviennacl

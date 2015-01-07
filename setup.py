@@ -28,6 +28,7 @@ setup(
           'pyopencl',
           'pyviennacl',
           'numpy >= 1.7',
-          'scipy >= 0.13.0'
+          'scipy >= 0.13.0',
+          'matplotlib >= 1.4.0'
       ],
 )

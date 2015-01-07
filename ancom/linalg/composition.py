@@ -126,10 +126,3 @@ class CompositionMatrix():
         """
         pass
     
-    def svd(self):
-        """
-        Performs singular value decomposition on matrix
-        """
-        Z = self.clr()
-        L, K, M = nl.svd(Z)
-        return L, K, M

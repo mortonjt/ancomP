@@ -101,7 +101,5 @@ class TestComposition(unittest.TestCase):
                               np.log(A / np.exp(np.log(A).mean())) ,
                               np.log(B / np.exp(np.log(B).mean())) )),
                                     dtype=np.float32))
-        
-        
-
+                
 unittest.main()
