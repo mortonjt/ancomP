@@ -8,19 +8,32 @@ from time import time
 import copy
 
 import unittest
+import numpy.testing as np_test
 
 from ancom.stats.permutation import (_naive_mean_permutation_test,
                                      _np_mean_permutation_test,
                                      _cl_mean_permutation_test,
                                      _init_device,
                                      _init_reciprocal_perms,
+                                     _init_categorical_perms,
                                      _np_two_sample_mean_statistic,
                                      _cl_two_sample_mean_statistic)
 
 class TestPermutation(unittest.TestCase):
 
-    
-    def test_basic1(self):
+    def test_init_perms(self):
+        cats = np.array([0, 1, 2, 0, 0, 2, 1])
+        perms = _init_categorical_perms(cats, permutations=0)
+        np_test.assert_array_equal(perms,
+                          np.array([[1, 0, 0],
+                                    [0, 1, 0],
+                                    [0, 0, 1],
+                                    [1, 0, 0],
+                                    [1, 0, 0],
+                                    [0, 0, 1],
+                                    [0, 1, 0]]))
+        
+    def test_basic_mean1(self):
         ## Basic quick test
         D = 5
         M = 6
@@ -44,8 +57,11 @@ class TestPermutation(unittest.TestCase):
         self.assertEquals(sum(np_p>0.05),0)
         self.assertEquals(sum(cl_p>0.05),0)
 
+        np_test.assert_array_almost_equal(nv_stats, np_stats)
+        np_test.assert_array_almost_equal(np_stats, cl_stats)
 
-    def test_basic2(self):
+
+    def test_basic_mean2(self):
         ## Basic quick test
         D = 5
         M = 6
@@ -69,6 +85,9 @@ class TestPermutation(unittest.TestCase):
         self.assertEquals(sum(np_p>0.05),0)
         self.assertEquals(sum(cl_p>0.05),0)
 
+        np_test.assert_array_almost_equal(nv_stats, np_stats)
+        np_test.assert_array_almost_equal(np_stats, cl_stats)
+
     def test_large(self):
         ## Large test
         N = 10
@@ -85,7 +104,9 @@ class TestPermutation(unittest.TestCase):
         np_stats, np_p = _np_mean_permutation_test(mat,cats,1000)
         cl_stats, cl_p = _cl_mean_permutation_test(mat,cats,1000)
         self.assertEquals(sum(abs(np_stats-cl_stats) > 0.1), 0)
-        
+
+        np_test.assert_array_almost_equal(np_stats, cl_stats)
+
     def test_random(self):
         ## Randomized test
         N = 50
@@ -118,6 +139,9 @@ class TestPermutation(unittest.TestCase):
         
         self.assertEquals(sum(abs(np_stats-cl_stats) > 0.1), 0)
         self.assertEquals(sum(abs(nv_stats-cl_stats) > 0.1), 0)
+
+        np_test.assert_array_almost_equal(np_stats, nv_stats)
+        np_test.assert_array_almost_equal(np_stats, cl_stats)
         
     def test_mean_stat(self):
         N = 20
@@ -142,6 +166,30 @@ class TestPermutation(unittest.TestCase):
         self.assertEquals(mean_stats.argmax(), 0)
         self.assertEquals(mean_stats.max(), 1)
         self.assertLess(pvalues.min(), 0.05)
+        
+ 
+        
+
+    # def test_t_stat(self):
+    #     np.set_printoptions(precision=3)
+    #     N = 20
+    #     mat = np.array(
+    #         np.matrix(np.vstack((
+    #             np.hstack((np.arange((3*N)/4), np.arange(N/4)+100)),
+    #             np.random.random(N))),dtype=np.float32))
+    #     cats = np.array([0]*((3*N)/4)+[1]*(N/4), dtype=np.float32)
+    #     d_mat, d_perms = _init_device(mat,cats)
+    #     mean_stats, pvalues = _cl_two_sample_t_statistic(d_mat, d_perms)
+    #     self.assertEquals(mean_stats.argmax(), 0)
+    #     self.assertEquals(mean_stats.max(), 1)
+    #     self.assertLess(pvalues.min(), 0.05)
+    #     perms = _init_reciprocal_perms(cats)
+    #     mat, perms = np.matrix(mat), np.matrix(perms)
+    #     t_stats, pvalues = _np_two_sample_t_statistic(mat, perms)
+    #     self.assertEquals(mean_stats.argmax(), 0)
+    #     self.assertEquals(mean_stats.max(), 1)
+    #     self.assertLess(pvalues.min(), 0.05)
+
 
     def test_init_device(self):
         N = 10

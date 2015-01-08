@@ -9,7 +9,6 @@ http://www.sediment.uni-goettingen.de/staff/tolosana/extra/CoDa.pdf
 
 import numpy as np
 
-import numpy.linalg as nl
 
 
 def closure(mat):
@@ -20,7 +19,9 @@ def closure(mat):
        columns = features
        rows = samples
     """
-    return mat / mat.sum(axis=1)
+    num_samps, num_feats = mat.shape
+    total = np.reshape(mat.sum(axis=1), (num_samps, 1))
+    return mat / total
 
 def zero_replacement(mat):
     """
@@ -33,8 +34,9 @@ def zero_replacement(mat):
     num_samps, num_feats = mat.shape
     delta = 1. / num_feats
     z_mat = (mat == 0).astype(np.float32)
-    zcnts = z_mat.sum(axis=1)
-    z_mat = np.multiply(z_mat, zcnts * delta)
+    zcnts = np.reshape(z_mat.sum(axis=1) * delta, (num_samps, 1) )
+    #zcnts = z_mat.sum(axis=1) * delta
+    z_mat = np.multiply(z_mat, zcnts)
     mat = mat + z_mat
     return mat
 
@@ -116,6 +118,9 @@ class CompositionMatrix():
         """
         lmat = np.log(self.mat) # Need to account for zeros
         gm = lmat.mean(axis = 1)
+        num_samps, num_feats = self.mat.shape
+        gm = np.reshape(gm, (num_samps, 1))
+        
         _clr = lmat - gm
         return _clr
 
