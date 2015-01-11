@@ -10,14 +10,18 @@ import copy
 import unittest
 import numpy.testing as np_test
 
-from ancom.stats.permutation import (_naive_mean_permutation_test,
-                                     _np_mean_permutation_test,
-                                     _cl_mean_permutation_test,
-                                     _init_device,
+from ancom.stats.permutation import (_init_device,
                                      _init_reciprocal_perms,
                                      _init_categorical_perms,
                                      _np_two_sample_mean_statistic,
-                                     _cl_two_sample_mean_statistic)
+                                     _cl_two_sample_mean_statistic,
+                                     _naive_mean_permutation_test,
+                                     _np_mean_permutation_test,
+                                     _cl_mean_permutation_test,
+                                     _naive_t_permutation_test,
+                                     _np_t_permutation_test,
+                                     _np_two_sample_t_statistic
+                                     )
 
 class TestPermutation(unittest.TestCase):
 
@@ -167,28 +171,18 @@ class TestPermutation(unittest.TestCase):
         self.assertEquals(mean_stats.max(), 1)
         self.assertLess(pvalues.min(), 0.05)
         
- 
-        
-
-    # def test_t_stat(self):
-    #     np.set_printoptions(precision=3)
-    #     N = 20
-    #     mat = np.array(
-    #         np.matrix(np.vstack((
-    #             np.hstack((np.arange((3*N)/4), np.arange(N/4)+100)),
-    #             np.random.random(N))),dtype=np.float32))
-    #     cats = np.array([0]*((3*N)/4)+[1]*(N/4), dtype=np.float32)
-    #     d_mat, d_perms = _init_device(mat,cats)
-    #     mean_stats, pvalues = _cl_two_sample_t_statistic(d_mat, d_perms)
-    #     self.assertEquals(mean_stats.argmax(), 0)
-    #     self.assertEquals(mean_stats.max(), 1)
-    #     self.assertLess(pvalues.min(), 0.05)
-    #     perms = _init_reciprocal_perms(cats)
-    #     mat, perms = np.matrix(mat), np.matrix(perms)
-    #     t_stats, pvalues = _np_two_sample_t_statistic(mat, perms)
-    #     self.assertEquals(mean_stats.argmax(), 0)
-    #     self.assertEquals(mean_stats.max(), 1)
-    #     self.assertLess(pvalues.min(), 0.05)
+    def test_t_test_basic1(self):
+        np.set_printoptions(precision=3)
+        N = 20
+        mat = np.array(
+            np.matrix(np.vstack((
+                np.hstack((np.arange((3*N)/4), np.arange(N/4)+100)),
+                np.random.random(N))),dtype=np.float32))
+        cats = np.array([0]*((3*N)/4)+[1]*(N/4), dtype=np.float32)      
+        nv_t_stats, pvalues = _naive_t_permutation_test(mat, cats)
+        perms = _init_categorical_perms(cats)
+        mat, perms = np.matrix(mat), np.matrix(perms)
+        np_t_stats, pvalues = _np_two_sample_t_statistic(mat, perms)
 
 
     def test_init_device(self):

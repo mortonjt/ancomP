@@ -12,13 +12,13 @@ from numpy import random, array
 from pandas import DataFrame, Series
 
 from math import log
-from stats.permutation import (_init_device,
-                               _init_reciprocal_perms,
-                               _np_two_sample_mean_statistic,
-                               _cl_two_sample_mean_statistic,
-                               _cl_mean_permutation_test,
-                               _np_mean_permutation_test,
-                               _naive_mean_permutation_test)
+from permutation import (_init_device,
+                         _init_reciprocal_perms,
+                         _np_two_sample_mean_statistic,
+                         _cl_two_sample_mean_statistic,
+                         _cl_mean_permutation_test,
+                         _np_mean_permutation_test,
+                         _naive_mean_permutation_test)
 
 def Holm(p):
     """

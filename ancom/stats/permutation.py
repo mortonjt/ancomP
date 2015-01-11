@@ -385,15 +385,16 @@ def _np_two_sample_t_statistic(mat, perms):
     _sums  = mat * perms
     _sums2 = np.multiply(mat,mat) * perms
 
-    ## Calculate means and variances
+    ## Calculate means and sample variances
     tot =  perms.sum(axis=0)
     _avgs  = _sums / tot
     _avgs2 = _sums2 / tot
     _vars  = _avgs2 - np.multiply(_avgs, _avgs)
+    _samp_vars =  np.multiply(tot,_vars) / (tot-1)
     
     ## Calculate the t statistic
     idx = np.arange(0, (permutations+1)*num_cats, num_cats)
-    denom  = np.sqrt(_vars[:, idx+1] / tot[:,idx+1]  + _vars[:, idx] / tot[:,idx])
+    denom  = np.sqrt(_samp_vars[:, idx+1] / tot[:,idx+1]  + _samp_vars[:, idx] / tot[:,idx])
     t_stat = np.divide(abs(_avgs[:, idx+1] - _avgs[:, idx]), denom)
     
     ## Calculate the p-values
