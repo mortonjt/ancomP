@@ -183,7 +183,7 @@ class TestPermutation(unittest.TestCase):
         perms = _init_categorical_perms(cats)
         mat, perms = np.matrix(mat), np.matrix(perms)
         np_t_stats, pvalues = _np_two_sample_t_statistic(mat, perms)
-
+        np_test.assert_array_almost_equal(nv_t_stats, np_t_stats, 5)
 
     def test_init_device(self):
         N = 10

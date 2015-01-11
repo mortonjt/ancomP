@@ -401,7 +401,7 @@ def _np_two_sample_t_statistic(mat, perms):
     cmps =  t_stat[:,1:] >= t_stat[:,0]
     pvalues = (cmps.sum(axis=1)+1.)/(permutations+1.)
         
-    return map(np.array,[t_stat[:,0],pvalues])
+    return map(np.array, map(np.ravel, [t_stat[:,0],pvalues]))
 
 ############################################################
 ## F-test permutation tests
