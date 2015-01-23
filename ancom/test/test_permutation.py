@@ -111,7 +111,7 @@ class TestPermutation(unittest.TestCase):
 
         np_test.assert_array_almost_equal(np_stats, cl_stats)
 
-    def test_random(self):
+    def test_random_mean_test(self):
         ## Randomized test
         N = 50
         mat = np.array(
@@ -148,16 +148,12 @@ class TestPermutation(unittest.TestCase):
         np_test.assert_array_almost_equal(np_stats, cl_stats)
         
     def test_mean_stat(self):
-        N = 20
+        N = 10000
         mat = np.array(
             np.matrix(np.vstack((
-                np.array([0]*(N/4)+[1]*(3*N/4)),
-                np.array([0]*N),
-                np.array([0]*N),
-                np.array([0]*N),
-                np.array([0]*N),
-                np.array([0]*N),
-                np.random.random(N))),dtype=np.float32))
+                np.hstack((np.arange((3*N)/4), np.arange(N/4)+100)),
+                np.random.random(N*N).reshape((N,N)))),
+                dtype=np.float32))
         cats = np.array([0]*(N/4)+[1]*(3*N/4), dtype=np.float32)
         d_mat, d_perms = _init_device(mat,cats)
         mean_stats, pvalues = _cl_two_sample_mean_statistic(d_mat, d_perms)
@@ -184,6 +180,27 @@ class TestPermutation(unittest.TestCase):
         mat, perms = np.matrix(mat), np.matrix(perms)
         np_t_stats, pvalues = _np_two_sample_t_statistic(mat, perms)
         np_test.assert_array_almost_equal(nv_t_stats, np_t_stats, 5)
+
+    def test_f_test_basic1(self):
+        np.set_printoptions(precision=3)
+        N = 9
+        mat = np.vstack((
+                np.hstack((np.arange(N/3),
+                           np.arange(N/3)+100,
+                           np.arange(N/3)+200)),
+                np.hstack((np.arange(N/3)+100,
+                           np.arange(N/3)+300,
+                           np.arange(N/3)+400))))
+        cats = np.array([0]*(N/3)+
+                        [1]*(N/3)+
+                        [2]*(N/3),
+                        dtype=np.float32) 
+        nv_t_stats, pvalues = _naive_t_permutation_test(mat, cats)
+        perms = _init_categorical_perms(cats)
+        mat, perms = np.matrix(mat), np.matrix(perms)
+        np_t_stats, pvalues = _np_two_sample_t_statistic(mat, perms)
+        np_test.assert_array_almost_equal(nv_t_stats, np_t_stats, 5)
+
 
     def test_init_device(self):
         N = 10
