@@ -1,7 +1,7 @@
 
 import numpy as np
 import scipy.stats as ss
-from ancom.linalg.composition import (power, perturb, clr, ilr,
+from ancom.linalg.composition import (perturb, perturb_inv, power, clr, ilr,
                                       centre, variation_matrix, total_variation,
                                       zero_replacement, closure)
 
@@ -34,20 +34,6 @@ class TestComposition(unittest.TestCase):
                               np.array([.2, .2, .6]),
                               np.array([.4, .4, .2]))))
 
-        D = 5
-        mat = np.vstack((
-            np.array(range(1,4) + [0]*1 + [5]),
-            np.array(range(1,2) + [0]*2 + range(4,6)),
-            np.array(range(1,D+1))))
-
-        amat = closure(zero_replacement(mat))
-        
-        np_test.assert_array_almost_equal(amat,
-                          np.vstack((
-                              np.array([1, 2, 3, .2, 5]) / 11.2,
-                              np.array([1, .4, .4, 4, 5]) / 10.8,
-                              np.array([1, 2, 3, 4, 5]) / 15.)))
-
         
     def test_perturb(self):
         mat = np.vstack((
@@ -64,7 +50,17 @@ class TestComposition(unittest.TestCase):
         np_test.assert_array_almost_equal(pmat,
                           np.vstack((
                               np.array([.125, .125, .75]),
-                              np.array([1./3, 1./3, 1./3]))))        
+                              np.array([1./3, 1./3, 1./3]))))
+        
+    def test_perturb_inv(self):
+        mat = np.vstack((
+            np.array([.2, .2, .6]),
+            np.array([.4, .4, .2])))
+        amat = mat
+        pmat = perturb(amat, np.array([.5, .5, .5]))
+        pimat = perturb_inv(amat, np.array([2, 2, 2]))
+        np_test.assert_array_almost_equal(pmat,pimat)
+        
         
     def test_power(self):
         mat = np.vstack((

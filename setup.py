@@ -18,7 +18,7 @@ setup(
     version = "0.0.1",
     author = "Jamie Morton",
     author_email = "jamietmorton@gmail.com",
-    description = ("A GPU accelerated version of ANCOM"),
+    description = ("Statistical methods for analyzing microbiomes"),
     packages=find_packages(),
     long_description=read('README.md'),
     license='MIT',

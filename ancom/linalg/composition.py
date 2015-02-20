@@ -27,7 +27,7 @@ def closure(mat):
     else:
         num_samps, num_feats = mat.shape
         total = np.reshape(mat.sum(axis=1), (num_samps, 1))
-    return mat / total
+    return np.divide(mat, total)
 
 def zero_replacement(mat):
     """
@@ -72,7 +72,6 @@ def power(x, y):
     x: numpy.ndarray
     y: numpy.ndarray
     """
-    num_samps, num_feats = x.shape
     mat = np.multiply(np.log(x), y)
     return closure(np.exp(mat))
 
