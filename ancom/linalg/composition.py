@@ -75,11 +75,34 @@ def power(x, y):
     mat = np.multiply(np.log(x), y)
     return closure(np.exp(mat))
 
-def clr_inv(mat):
+
+def inner(mat1, mat2):
     """
-    Performs inverse centre log ratio transformation
+    Calculates the Aitchson inner product
+    mat1: numpy.ndarray 
+    mat2: numpy.ndarray
     """
-    return closure(np.exp(mat))
+    if len(mat1.shape) == 1:
+        D1 = len(mat1)
+    else:
+        _, D1 = mat1.shape
+    if len(mat2.shape) == 1:
+        D2 = len(mat2)
+    else:
+        _, D2 = mat2.shape
+    assert D1==D2
+    D = D1
+    
+    # _in = 0
+    # for i in range(D):
+    #     for j in range(D):
+    #         _in += np.log(mat1[i]/mat1[j])*np.log(mat2[i]/mat2[j])
+    # return _in / (2*D)
+    M = np.ones((D,D))*-1 + np.identity(D)*D
+    a = clr(mat1)
+    b = clr(mat2).T
+    return np.dot(np.dot(a,M),b)/D
+
 
 def clr(mat):
     """
@@ -98,27 +121,37 @@ def clr(mat):
         num_samps, num_feats = mat.shape
         gm = lmat.mean(axis = 1)
         gm = np.reshape(gm, (num_samps, 1))
-
     _clr = lmat - gm
     return _clr
 
-def ilr(mat):
+def clr_inv(mat):
+    """
+    Performs inverse centre log ratio transformation
+    """
+    return closure(np.exp(mat))
+
+def ilr(mat, basis=None):
     """
     Performs isometric log ratio transformation
+    mat: numpy.ndarray
+    basis: numpy.ndarray
+        orthonormal basis for Aitchison simplex
     """
     if len(mat.shape) == 1:
         c = len(mat)
     else:
         r,c = mat.shape
-    basis = np.zeros((c, c-1))
-    for j in range(c-1):
-        i = float(j+1)
-        e = np.array( [1 / np.sqrt(i*(i+1))]*(j)+[-np.sqrt(i/(i+1))]+[1]*(c-j-1))
-        basis[j,:] = clr(closure(np.exp(e)))
+    if basis==None: # Default to J.J.Egozcue orthonormal basis
+        basis = np.zeros((c, c-1))
+        for j in range(c-1):
+            i = float(j+1)
+            e = np.array( [(1/i)]*int(i)+[-1]+[0]*int(c-i-1))*np.sqrt(i/(i+1))
+            basis[:,j] = e
     _ilr = np.dot(clr(mat), basis)
     return _ilr
 
-def ilr_inv(mat):    
+
+def ilr_inv(mat, basis=None):    
     """
     Performs inverse isometric log ratio transform
     """
@@ -126,29 +159,16 @@ def ilr_inv(mat):
         c = len(mat)
     else:
         r,c = mat.shape
-    k = c+1
-    basis = np.zeros((c, k))
-    for j in range(c):
-        i = float(j+1)
-        e = np.array( [1 / np.sqrt(i*(i+1))]*(j+1)+[-np.sqrt(i/(i+1))]+[1]*(k-j-2))
-        basis[j,:] = clr(closure(np.exp(e)))
-    return closure(np.dot(np.exp(mat), basis))
+    c = c+1
+    if basis==None: # Default to J.J.Egozue orthonormal basis
+        basis = np.zeros((c, c-1))
+        for j in range(c-1):
+            i = float(j+1)
+            e = np.array( [(1/i)]*int(i)+[-1]+[0]*int(c-i-1))*np.sqrt(i/(i+1))
+            basis[:,j] = e    
+    return clr_inv(np.dot(mat, basis.T))
 
-def inner(mat1, mat2):
-    """
-    Calculates the inner product
-    mat1: numpy.ndarray 1 D
-    mat2: numpy.ndarray 1 D
-    """
-    assert len(mat1)==len(mat2)
-    D = len(mat1)
-    _in = 0
-    for i in range(D):
-        for j in range(D):
-            _in += np.log(mat1[i]/mat1[j])*np.log(mat2[i]/mat2[j])
-    return _in / (2*D)
     
-
 def centre(mat):
     """
     Performs a perturbation and centers the data around the center
@@ -157,7 +177,7 @@ def centre(mat):
        rows = samples
     """
     r,c = mat.shape
-    cen = sps.gmean(mat, axis=0)
+    cen = ss.gmean(mat, axis=0)
     cen = np.tile(cen, (r,1))
     return perturb_inv(mat, cen)
 
