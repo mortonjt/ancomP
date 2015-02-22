@@ -1,7 +1,7 @@
 
 import numpy as np
 import scipy.stats as ss
-from ancom.linalg.composition import (perturb, perturb_inv, power, clr, ilr,
+from ancom.linalg.composition import (perturb, perturb_inv, power, clr, ilr, ilr_inv,
                                       centre, variation_matrix, total_variation,
                                       zero_replacement, closure)
 
@@ -9,7 +9,6 @@ import unittest
 import numpy.testing as np_test
 
 class TestComposition(unittest.TestCase):
-    
     def test_zero_replacement(self):
         D = 5
         mat = np.vstack((
@@ -94,12 +93,11 @@ class TestComposition(unittest.TestCase):
                               np.log(A / np.exp(np.log(A).mean())) ,
                               np.log(B / np.exp(np.log(B).mean())) )))
     def test_ilr(self):
-        # mat =np.array([[np.exp(1), 1, 1]])
-        # np_test.assert_array_almost_equal(ilr(mat),
-        #                                   np.array([np.exp(1), 1]))
-        
-        # mat =np.array([[1, np.exp(1), 1]])
-        # np_test.assert_array_almost_equal(ilr(mat),
-        #                                   np.array([1, np.exp(1)]))
-        pass
+        mat = closure(np.array([[np.exp(1), 1, 1]]))
+        np_test.assert_array_almost_equal(ilr(mat),
+                                          np.array([[ 0.70710678,  0.40824829]]))
+    def test_ilr_inv(self):
+        mat = closure(np.array([[np.exp(1), 1, 1]]))
+        np_test.assert_array_almost_equal(ilr_inv(ilr(mat)),mat)
+
 unittest.main()
