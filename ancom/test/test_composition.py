@@ -2,13 +2,13 @@
 import numpy as np
 import scipy.stats as ss
 from ancom.linalg.composition import (perturb, perturb_inv, power, clr, ilr, ilr_inv,
-                                      centre, variation_matrix, total_variation,
-                                      zero_replacement, closure)
+                                      centralize, variation_matrix, total_variation,
+                                      multiplicative_replacement, _closure)
 
 import unittest
-import numpy.testing as np_test
+import numpy.testing as npt
 
-class CompositionTests(TestCase):
+class CompositionTests(unittest.TestCase):
 
     def setUp(self):
         self.data1 = np.array([[2, 2, 6],
@@ -166,11 +166,12 @@ class CompositionTests(TestCase):
             centralize(self.data5)
 
     def test_ilr(self):
-        mat = closure(np.array([[np.exp(1), 1, 1]]))
-        np_test.assert_array_almost_equal(ilr(mat),
+        mat = _closure(np.array([[np.exp(1), 1, 1]]))
+        npt.assert_array_almost_equal(ilr(mat),
                                           np.array([[ 0.70710678,  0.40824829]]))
     def test_ilr_inv(self):
-        mat = closure(np.array([[np.exp(1), 1, 1]]))
-        np_test.assert_array_almost_equal(ilr_inv(ilr(mat)),mat)
+        mat = _closure(np.array([[np.exp(1), 1, 1]]))
+        npt.assert_array_almost_equal(ilr_inv(ilr(mat)),mat)
 
-unittest.main()
+if __name__=="__main__":
+    unittest.main()

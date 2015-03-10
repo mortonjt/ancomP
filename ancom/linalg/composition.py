@@ -252,6 +252,12 @@ def clr(mat):
         raise ValueError("mat has too many dimensions")
     return lmat - gm
 
+def clr_inv(mat):
+    """
+    Performs inverse centre log ratio transformation
+    """
+    return _closure(np.exp(mat))
+
 
 def centralize(mat):
     """
