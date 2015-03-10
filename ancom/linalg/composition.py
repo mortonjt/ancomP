@@ -6,80 +6,293 @@ Reference
 http://www.sediment.uni-goettingen.de/staff/tolosana/extra/CoDa.pdf
 
 """
-
 import numpy as np
 import scipy.stats as ss
 
-def closure(mat):
+
+def _closure(mat):
     """
     Performs closure to ensure that all elements add up to 1
-
-    mat: numpy.ndarray
-       columns = features
-       rows = samples
+    Parameters
+    ----------
+    mat : array_like
+       a matrix of proportions where
+       rows = compositions
+       columns = components
+    Returns
+    -------
+    numpy.ndarray, np.float64
+       A matrix of proportions where all of the values
+       are nonzero and each composition (row) adds up to 1
     """
-    if mat.dtype != type(0.0):
-        mat = mat.astype(np.float64)
 
-    if len(mat.shape) == 1:
-        num_samps = len(mat)
+    mat = np.asarray(mat, dtype=np.float64)
+
+    if mat.ndim == 1:
         total = mat.sum()
-    else:
+    elif mat.ndim == 2:
         num_samps, num_feats = mat.shape
         total = np.reshape(mat.sum(axis=1), (num_samps, 1))
+    else:
+        raise ValueError("mat has too many dimensions")
     return np.divide(mat, total)
 
-def zero_replacement(mat):
+
+def multiplicative_replacement(mat, delta=None):
     """
-    Performs multiplicative replacement strategy
-    mat: numpy.ndarray
-       columns = features
-       rows = samples
-    Returns:
+    Performs multiplicative replacement strategy to replace
+    all of the zeros with small non-zero values.  A closure
+    operation is applied so that the compositions still
+    add up to 1
+    Parameters
+    ----------
+    mat: array_like
+       a matrix of proportions where
+       rows = compositions and
+       columns = components
+    Returns
+    -------
+    numpy.ndarray, np.float64
+       A matrix of proportions where all of the values
+       are nonzero and each composition (row) adds up to 1
+    Examples
     --------
-    mat: numpy.ndarray
+    >>> import numpy as np
+    >>> from skbio.stats.composition import multiplicative_replacement
+    >>> X = np.array([[.2,.4,.4, 0],[0,.5,.5,0]])
+    >>> multiplicative_replacement(X)
+    array([[ 0.1875,  0.375 ,  0.375 ,  0.0625],
+           [ 0.0625,  0.4375,  0.4375,  0.0625]])
     """
-    num_samps, num_feats = mat.shape
-    delta = (1. / num_feats)**2
-    z_mat = (mat == 0).astype(np.float32)
-    zcnts = 1 - np.reshape(z_mat.sum(axis=1) * delta, (num_samps, 1) )
-    #z_mat = np.multiply(z_mat, zcnts)
-    mat = z_mat*delta + np.multiply((1-z_mat), np.multiply(zcnts,mat))
-    return closure(mat)
+    mat = np.asarray(mat, dtype=np.float64)
+    z_mat = (mat == 0)
+
+    if mat.ndim == 1:
+        num_feats = len(mat)
+        num_samps = 1
+        tot = z_mat.sum()
+    elif mat.ndim == 2:
+        num_samps, num_feats = mat.shape
+        tot = z_mat.sum(axis=1)
+    else:
+        raise ValueError("mat has too many dimensions")
+
+    if delta is None:
+        delta = (1. / num_feats)**2
+
+    zcnts = 1 - np.reshape(tot * delta, (num_samps, 1))
+    mat_ = _closure(z_mat*delta + np.multiply((1-z_mat),
+                                              np.multiply(zcnts, mat)))
+    if mat.ndim == 1:
+        mat_ = np.ravel(mat_)
+    return mat_
+
 
 def perturb(x, y):
-    """
+    r"""
     Performs the perturbation operation
-    x: numpy.ndarray
-    y: numpy.ndarray
-    """    
-    mat = np.multiply(x, y)
-    return closure(mat)
+    This operation is defined as
+    :math:`x \oplus y = C[x_1 y_1, ..., x_D y_D]`
+    :math:`C[x]` is the closure operation defined as
+    :math:`C[x] = [\frac{x_1}{\sum x},...,\frac{x_D}{\sum x}]`
+    for some :math:`D` dimensional real vector :math:`x` and
+    :math:`D` is the number of components for every composition.
+    Parameters
+    ----------
+    x : array_like, float
+        a matrix of proportions where
+        rows = compositions and
+        columns = components
+    y : array_like, float
+        a matrix of proportions where
+        rows = compositions and
+        columns = components
+    Returns
+    -------
+    numpy.ndarray, np.float64
+       A matrix of proportions where all of the values
+       are nonzero and each composition (row) adds up to 1
+    Notes
+    -----
+    - Each row must add up to 1
+    - All of the values in x and y must be greater than zero
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from skbio.stats.composition import perturb
+    >>> x = np.array([.1,.3,.4, .2])
+    >>> y = np.array([1./6,1./6,1./3,1./3])
+    >>> perturb(x,y)
+    array([ 0.0625,  0.1875,  0.5   ,  0.25  ])
+    """
+    x = np.asarray(x, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
+    return _closure(np.multiply(x, y))
+
 
 def perturb_inv(x, y):
-    """
+    r"""
     Performs the inverse perturbation operation
-    x: numpy.ndarray
-    y: numpy.ndarray
+    This operation is defined as
+    :math:`x \ominus y = C[x_1 y_1^{-1}, ..., x_D y_D^{-1}]`
+    :math:`C[x]` is the closure operation defined as
+    :math:`C[x] = [\frac{x_1}{\sum x},...,\frac{x_D}{\sum x}]`
+    for some :math:`D` dimensional real vector :math:`x` and
+    :math:`D` is the number of components for every composition.
+    Parameters
+    ----------
+    x : numpy.ndarray
+        a matrix of proportions where
+        rows = compositions and
+        columns = components
+    y : numpy.ndarray
+        rows = compositions and
+        columns = components
+    Returns
+    -------
+    numpy.ndarray, np.float64
+       A matrix of proportions where all of the values
+       are nonzero and each composition (row) adds up to 1
+    Notes
+    -----
+    - Each row must add up to 1 for x.
+    - y doesn't neccessary have to be a matrix of compositions
+    - All of the values in x and y must be greater than zero
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from skbio.stats.composition import perturb_inv
+    >>> x = np.array([.1,.3,.4, .2])
+    >>> y = np.array([1./6,1./6,1./3,1./3])
+    >>> perturb_inv(x,y)
+    array([ 0.14285714,  0.42857143,  0.28571429,  0.14285714])
     """
-    _y = power(y,-1)
-    mat = np.multiply(x, _y)
-    return closure(mat)
+    x = np.asarray(x, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
+    _y = power(y, -1)
+    return _closure(np.multiply(x, _y))
 
-def power(x, y):
+
+def power(x, a):
+    r"""
+    Performs the power operation
+    This operation is defined as follows
+    :math:`x \odot a = C[x_1^a, ..., x_D^a]`
+    :math:`C[x]` is the closure operation defined as
+    :math:`C[x] = [\frac{x_1}{\sum x},...,\frac{x_D}{\sum x}]`
+    for some :math:`D` dimensional real vector :math:`x` and
+    :math:`D` is the number of components for every composition.
+    Parameters
+    ----------
+    x : numpy.ndarray, float
+        a matrix of proportions where
+        rows = compositions and
+        columns = components
+    a : float
+        a scalar float
+    Returns
+    -------
+    numpy.ndarray, np.float64
+       A matrix of proportions where all of the values
+       are nonzero and each composition (row) adds up to 1
+    Notes
+    -----
+    - Each row must add up to 1 for x
+    - All of the values in x must be greater than zero
+    >>> import numpy as np
+    >>> from skbio.stats.composition import power
+    >>> x = np.array([.1,.3,.4, .2])
+    >>> power(x, .1)
+    array([ 0.23059566,  0.25737316,  0.26488486,  0.24714631])
     """
-    Performs the perturbation operation
-    x: numpy.ndarray
-    y: numpy.ndarray
+    x = np.asarray(x, dtype=np.float64)
+    mat = np.multiply(np.log(x), a)
+    return _closure(np.exp(mat))
+
+
+def clr(mat):
+    r"""
+    Performs centre log ratio transformation that transforms
+    compositions from Aitchison geometry to the real space.
+    This transformation is an isometry, but not an isomorphism.
+    This transformation is defined for a composition :math:`x` as follows
+    :math:`clr(x) = ln[\frac{x_1}{g_m(x)}, ..., \frac{x_D}{g_m(x)}]`
+    where :math:`g_m(x) = (\prod_{i=1}^{D} x_i)^{1/D}` is the geometric
+    mean of :math:`x`.
+    Parameters
+    ----------
+    mat : numpy.ndarray, float
+       a matrix of proportions where
+       rows = compositions and
+       columns = components
+    Returns
+    -------
+    numpy.ndarray
+         clr transformed matrix
+    Notes
+    -----
+    - Each row must add up to 1
+    - All of the values must be greater than zero for mat
+    >>> import numpy as np
+    >>> from skbio.stats.composition import clr
+    >>> x = np.array([.1,.3,.4, .2])
+    >>> clr(x)
+    array([-0.79451346,  0.30409883,  0.5917809 , -0.10136628])
     """
-    mat = np.multiply(np.log(x), y)
-    return closure(np.exp(mat))
+    mat = np.asarray(mat, dtype=np.float64)
+    lmat = np.log(mat)
+    if mat.ndim == 1:
+        num_samps = len(mat)
+        gm = lmat.mean()
+    elif mat.ndim == 2:
+        num_samps, num_feats = mat.shape
+        gm = lmat.mean(axis=1)
+        gm = np.reshape(gm, (num_samps, 1))
+    else:
+        raise ValueError("mat has too many dimensions")
+    return lmat - gm
+
+
+def centralize(mat):
+    """
+    This calculates the average sample and centers the data
+    around this sample.
+    Parameters
+    ----------
+    mat : numpy.ndarray, float
+       a matrix of proportions where
+       rows = compositions and
+       columns = components
+    Returns
+    -------
+    numpy.ndarray
+         centered composition matrix
+    Notes
+    -----
+    - Each row must add up to 1 for mat
+    - All of the values must be greater than zero
+    >>> import numpy as np
+    >>> from skbio.stats.composition import centralize
+    >>> X = np.array([[.1,.3,.4, .2],[.2,.2,.2,.4]])
+    >>> centralize(X)
+    array([[ 0.17445763,  0.30216948,  0.34891526,  0.17445763],
+           [ 0.32495488,  0.18761279,  0.16247744,  0.32495488]])
+    """
+    mat = np.asarray(mat, dtype=np.float64)
+    if mat.ndim == 1:
+        raise ValueError("mat needs more than 1 row")
+    if mat.ndim > 2:
+        raise ValueError("mat has too many dimensions")
+    r, c = mat.shape
+    cen = ss.gmean(mat, axis=0)
+    cen = np.tile(cen, (r, 1))
+    return perturb_inv(mat, cen)
 
 
 def inner(mat1, mat2):
     """
     Calculates the Aitchson inner product
-    mat1: numpy.ndarray 
+    mat1: numpy.ndarray
     mat2: numpy.ndarray
     """
     if len(mat1.shape) == 1:
@@ -92,7 +305,7 @@ def inner(mat1, mat2):
         _, D2 = mat2.shape
     assert D1==D2
     D = D1
-    
+
     # _in = 0
     # for i in range(D):
     #     for j in range(D):
@@ -103,32 +316,6 @@ def inner(mat1, mat2):
     b = clr(mat2).T
     return np.dot(np.dot(a,M),b)/D
 
-
-def clr(mat):
-    """
-    Performs centre log ratio transformation
-
-    Returns
-    =======
-    clr: numpy.ndarray
-    clr transformed matrix
-    """
-    lmat = np.log(mat) # Need to account for zeros
-    if len(mat.shape) == 1:
-        num_samps = len(mat)
-        gm = lmat.mean()
-    else:
-        num_samps, num_feats = mat.shape
-        gm = lmat.mean(axis = 1)
-        gm = np.reshape(gm, (num_samps, 1))
-    _clr = lmat - gm
-    return _clr
-
-def clr_inv(mat):
-    """
-    Performs inverse centre log ratio transformation
-    """
-    return closure(np.exp(mat))
 
 def ilr(mat, basis=None):
     """
@@ -151,7 +338,7 @@ def ilr(mat, basis=None):
     return _ilr
 
 
-def ilr_inv(mat, basis=None):    
+def ilr_inv(mat, basis=None):
     """
     Performs inverse isometric log ratio transform
     """
@@ -165,30 +352,20 @@ def ilr_inv(mat, basis=None):
         for j in range(c-1):
             i = float(j+1)
             e = np.array( [(1/i)]*int(i)+[-1]+[0]*int(c-i-1))*np.sqrt(i/(i+1))
-            basis[:,j] = e    
+            basis[:,j] = e
     return clr_inv(np.dot(mat, basis.T))
 
-    
-def centre(mat):
-    """
-    Performs a perturbation and centers the data around the center
-    mat: numpy.ndarray
-       columns = features
-       rows = samples
-    """
-    r,c = mat.shape
-    cen = ss.gmean(mat, axis=0)
-    cen = np.tile(cen, (r,1))
-    return perturb_inv(mat, cen)
 
 def variation_matrix(mat):
     """
+    TODO
     Calculates the variation matrix
     """
     pass
 
 def total_variation(mat):
     """
-    Calculate total variation 
+    TODO
+    Calculate total variation
     """
     pass
