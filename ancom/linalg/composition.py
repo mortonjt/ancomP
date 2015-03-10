@@ -210,53 +210,6 @@ def power(x, a):
     return _closure(np.exp(mat))
 
 
-def clr(mat):
-    r"""
-    Performs centre log ratio transformation that transforms
-    compositions from Aitchison geometry to the real space.
-    This transformation is an isometry, but not an isomorphism.
-    This transformation is defined for a composition :math:`x` as follows
-    :math:`clr(x) = ln[\frac{x_1}{g_m(x)}, ..., \frac{x_D}{g_m(x)}]`
-    where :math:`g_m(x) = (\prod_{i=1}^{D} x_i)^{1/D}` is the geometric
-    mean of :math:`x`.
-    Parameters
-    ----------
-    mat : numpy.ndarray, float
-       a matrix of proportions where
-       rows = compositions and
-       columns = components
-    Returns
-    -------
-    numpy.ndarray
-         clr transformed matrix
-    Notes
-    -----
-    - Each row must add up to 1
-    - All of the values must be greater than zero for mat
-    >>> import numpy as np
-    >>> from skbio.stats.composition import clr
-    >>> x = np.array([.1,.3,.4, .2])
-    >>> clr(x)
-    array([-0.79451346,  0.30409883,  0.5917809 , -0.10136628])
-    """
-    mat = np.asarray(mat, dtype=np.float64)
-    lmat = np.log(mat)
-    if mat.ndim == 1:
-        num_samps = len(mat)
-        gm = lmat.mean()
-    elif mat.ndim == 2:
-        num_samps, num_feats = mat.shape
-        gm = lmat.mean(axis=1)
-        gm = np.reshape(gm, (num_samps, 1))
-    else:
-        raise ValueError("mat has too many dimensions")
-    return lmat - gm
-
-def clr_inv(mat):
-    """
-    Performs inverse centre log ratio transformation
-    """
-    return _closure(np.exp(mat))
 
 
 def centralize(mat):
@@ -321,6 +274,107 @@ def inner(mat1, mat2):
     a = clr(mat1)
     b = clr(mat2).T
     return np.dot(np.dot(a,M),b)/D
+
+# ===================================================================
+# LINEAR TRANSFORMATIONS
+# ===================================================================
+def alr(mat):
+    """
+    Performs additive log ratio transformation
+    Always takes the community over the last
+    component
+
+    Parameters
+    ----------
+    mat : numpy.ndarray, float
+       a matrix of proportions where
+       rows = compositions and
+       columns = components
+    """
+    if mat.ndim == 1:
+        D = len(mat)
+        mat = mat.reshape((1,D))
+    else:
+        _, D = mat.shape
+
+    return np.log(mat[:,:-1]) -  np.log(mat[:,-1])
+
+
+def alr_inv(mat):
+    """
+    Performs inverse additive log ratio transformation
+
+    Parameters
+    ----------
+    mat : numpy.ndarray, float
+       a matrix of proportions where
+       rows = compositions and
+       columns = components
+    """
+    if mat.ndim == 1:
+        mat = mat.reshape((1,len(mat)))
+        D = 1
+    else:
+        D, _ = mat.shape
+
+    _mat = np.hstack((mat, np.zeros((D,1))))
+    return _closure(np.exp(_mat))
+
+
+def clr(mat):
+    r"""
+    Performs centre log ratio transformation that transforms
+    compositions from Aitchison geometry to the real space.
+    This transformation is an isometry, but not an isomorphism.
+    This transformation is defined for a composition :math:`x` as follows
+    :math:`clr(x) = ln[\frac{x_1}{g_m(x)}, ..., \frac{x_D}{g_m(x)}]`
+    where :math:`g_m(x) = (\prod_{i=1}^{D} x_i)^{1/D}` is the geometric
+    mean of :math:`x`.
+    Parameters
+    ----------
+    mat : numpy.ndarray, float
+       a matrix of proportions where
+       rows = compositions and
+       columns = components
+    Returns
+    -------
+    numpy.ndarray
+         clr transformed matrix
+    Notes
+    -----
+    - Each row must add up to 1
+    - All of the values must be greater than zero for mat
+    >>> import numpy as np
+    >>> from skbio.stats.composition import clr
+    >>> x = np.array([.1,.3,.4, .2])
+    >>> clr(x)
+    array([-0.79451346,  0.30409883,  0.5917809 , -0.10136628])
+    """
+    mat = np.asarray(mat, dtype=np.float64)
+    lmat = np.log(mat)
+    if mat.ndim == 1:
+        num_samps = len(mat)
+        gm = lmat.mean()
+    elif mat.ndim == 2:
+        num_samps, num_feats = mat.shape
+        gm = lmat.mean(axis=1)
+        gm = np.reshape(gm, (num_samps, 1))
+    else:
+        raise ValueError("mat has too many dimensions")
+    return lmat - gm
+
+def clr_inv(mat):
+    """
+    Performs inverse centre log ratio transformation
+
+    Parameters
+    ----------
+    mat : numpy.ndarray, float
+       a matrix of proportions where
+       rows = compositions and
+       columns = components
+    """
+    return _closure(np.exp(mat))
 
 
 def ilr(mat, basis=None):
