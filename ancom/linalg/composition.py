@@ -578,6 +578,7 @@ def _sse(resid):
     """
     return (resid**2).sum()
 
+
 def _sst(mat):
     """
     Calculates total sum of squares based on proportions
@@ -596,7 +597,61 @@ def _sst(mat):
         raise ValueError("Input matrix can only have two dimensions or less")
     if np.any(np.logical_not(np.isclose(mat.sum(axis=1), 1))):
         raise ValueError("Rows need to sum up to 1")
-    r, c = mat.shape
+    r, _ = mat.shape
     sst_hat = 0
     for i in range(r):
-        sst_hat = distance(
+        sst_hat += distance(mat[i,:], centre(mat))**2
+    return sst_hat
+
+
+def simplicial_OLS(y,X):
+    """
+    Performs a simplicial ordinary least squares on a set of compositions
+    and a response variable
+
+    Parameters
+    ----------
+    y : numpy.ndarray, float
+       a matrix of proportions where
+       rows = compositions and
+       columns = components
+    X : numpy.ndarray, float
+       independent variable
+
+    Returns
+    -------
+    predict: numpy.ndarray, float
+       a predicted matrix of proportions where
+       rows = compositions and
+       columns = components
+    b: numpy.ndarray, float
+       a matrix of estimated coefficient compositions
+    resid: numpy.ndarray, float
+       a matrix of residuals
+    r2: float
+       coefficient of determination
+    """
+    y = np.atleast_2d(y)
+    X = np.atleast_2d(X)
+    if np.any(y < 0):
+        raise ValueError("Cannot have negative proportions")
+    if y.ndim > 2:
+        raise ValueError("Input matrix can only have two dimensions or less")
+    if X.ndim > 2:
+        raise ValueError("Input matrix can only have two dimensions or less")
+    if np.any(np.logical_not(np.isclose(y.sum(axis=1), 1))):
+        raise ValueError("Rows need to sum up to 1")
+
+    # Need to add constant for intercept
+    r, c = X
+    X = np.hstack(np.ones((1,r)), X)
+
+    y_ = ilr(y)
+    # Now perform least squares to calculate unknown coefficients
+    b_ = np.dot(np.dot(np.linalg.pinv(np.dot(X.T,X)), X.T), y_)
+    predict_ = np.dot(X,b_)
+    resid = (y_ - predict_)
+    r2 = 1 - _sse(resid)/_sst(y)
+    b = ilr_inv(b_)
+    predict = ilr_inv(predict_)
+    return predict, b, resid, r2
