@@ -1,7 +1,7 @@
 ANCOM
 =====
 
-Analysis of Composition of Microbiomes
+[Analysis of Composition of Microbiomes](http://www.microbecolhealthdis.net/index.php/mehd/article/view/27663%20)
 
 ANCOM is a novel statistical test that accounts for OTU dependencies when calculating group signficance.
 This software makes use of GPU-accelerated matrix multiplication and permutation tests to 
