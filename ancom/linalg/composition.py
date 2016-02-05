@@ -561,27 +561,13 @@ def total_variation(mat):
     """
     return (distance(mat,centre(mat))**2).mean()
 
+
 ####################################################################
-##                     Linear Regression                          ##
+##                        Ordination                              ##
 ####################################################################
-
-def _sse(resid):
+def sparse_pca(mat):
     """
-    Calculates sum of squares error based on ilr residuals
-
-    Parameters
-    ----------
-    resid : numpy.ndarray, float
-       a matrix of ilr transformed residuals where
-       rows = compositions and
-       columns = components
-    """
-    return (resid**2).sum()
-
-
-def _sst(mat):
-    """
-    Calculates total sum of squares based on proportions
+    Performs a sparse principle coordinates analysis
 
     Parameters
     ----------
@@ -590,21 +576,43 @@ def _sst(mat):
        rows = compositions and
        columns = components
     """
-    mat = np.atleast_2d(mat)
-    if np.any(mat < 0):
+
+
+####################################################################
+##                     Linear Regression                          ##
+####################################################################
+
+def _rsq(predict, actual):
+    """
+    Calculates coefficient of determination
+
+    Parameters
+    ----------
+    mat : numpy.ndarray, float
+       a matrix of proportions where
+       rows = compositions and
+       columns = components
+    """
+    predict = np.atleast_2d(predict)
+    actual = np.atleast_2d(actual)
+    if np.any(predict < 0) or np.any(actual < 0):
         raise ValueError("Cannot have negative proportions")
-    if mat.ndim > 2:
-        raise ValueError("Input matrix can only have two dimensions or less")
-    if np.any(np.logical_not(np.isclose(mat.sum(axis=1), 1))):
+    if predict.ndim > 2 or actual.ndim > 2:
+        raise ValueError("Input predictrix can only have two dimensions or less")
+    if (np.any(np.logical_not(np.isclose(predict.sum(axis=1), 1))) or
+        np.any(np.logical_not(np.isclose(actual.sum(axis=1), 1)))):
         raise ValueError("Rows need to sum up to 1")
-    r, _ = mat.shape
+    r, _ = predict.shape
     sst_hat = 0
     for i in range(r):
-        sst_hat += distance(mat[i,:], centre(mat))**2
-    return sst_hat
+        sst_hat += distance(actual[i,:], centre(actual))**2
+    ssr_hat = 0
+    for i in range(r):
+        ssr_hat += distance(predict[i,:], centre(actual))**2
+    return ssr_hat / sst_hat
 
 
-def simplicial_OLS(y,X):
+def simplicial_OLS(y, X):
     """
     Performs a simplicial ordinary least squares on a set of compositions
     and a response variable
@@ -643,15 +651,15 @@ def simplicial_OLS(y,X):
         raise ValueError("Rows need to sum up to 1")
 
     # Need to add constant for intercept
-    r, c = X
-    X = np.hstack(np.ones((1,r)), X)
+    r, c = X.shape
+    X = np.hstack((np.ones((r,1)), X))
 
     y_ = ilr(y)
     # Now perform least squares to calculate unknown coefficients
     b_ = np.dot(np.dot(np.linalg.pinv(np.dot(X.T,X)), X.T), y_)
     predict_ = np.dot(X,b_)
     resid = (y_ - predict_)
-    r2 = 1 - _sse(resid)/_sst(y)
     b = ilr_inv(b_)
     predict = ilr_inv(predict_)
+    r2 = _rsq(predict, y)
     return predict, b, resid, r2
