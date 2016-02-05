@@ -12,9 +12,9 @@ import numpy as np
 # string in below ...
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
-        
+
 setup(
-    name = "ancom",
+    name = "ancomP",
     version = "0.0.1",
     author = "Jamie Morton",
     author_email = "jamietmorton@gmail.com",
@@ -25,10 +25,9 @@ setup(
     include_dirs=[np.get_include()],
     install_requires=[
           'pandas',
-          'pyopencl',
-          'pyviennacl',
           'numpy >= 1.7',
-          'scipy >= 0.13.0',
-          'matplotlib >= 1.4.0'
+          'scipy >= 0.13.0'
+          'biom-format',
+          'scikit-bio >= 0.4.0'
       ],
 )
