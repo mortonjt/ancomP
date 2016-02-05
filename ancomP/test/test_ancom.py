@@ -11,7 +11,7 @@ import copy
 from ancomP.util import assert_data_frame_almost_equal
 from ancomP.stats.ancom import _holm_bonferroni, _log_compare, _stationary_log_compare
 from ancomP import ancom
-
+from ancomP.linalg.composition import closure
 
 class AncomTests(TestCase):
     def setUp(self):

@@ -1,18 +1,20 @@
+from __future__ import division
 import numpy as np
 import pandas as pd
 from time import time
 import copy
-from skbio.util import assert_data_frame_almost_equal
 
 import os, sys, site
 import numpy as np
 from numpy import random, array
 from pandas import DataFrame, Series
-from scipy.stats import ttest_ind, f_oneway
+import scipy
 
 from math import log
 from permutation import (_init_reciprocal_perms,
                          _np_k_sample_f_statistic)
+
+
 
 
 def ancom(table, grouping,
@@ -247,6 +249,7 @@ def ancom(table, grouping,
         else:
             nu = cutoff[4]
         reject = (W >= nu*n_feat)
+
     labs = mat.columns
     return pd.DataFrame({'W': pd.Series(W, index=labs),
                          'reject': pd.Series(reject, index=labs)})
@@ -318,7 +321,7 @@ def _stationary_log_compare(mat,cats,permutations=1000):
 
 
 def _log_compare(mat, cats,
-                 significance_test=f_oneway):
+                 significance_test=scipy.stats.f_oneway):
     """ Calculates pairwise log ratios between all features and performs a
     significiance test (i.e. t-test) to determine if there is a significant
     difference in feature ratios with respect to the variable of interest.

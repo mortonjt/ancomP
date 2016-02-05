@@ -89,7 +89,7 @@ import numpy as np
 import scipy.stats as ss
 
 
-def _closure(mat):
+def closure(mat):
     """
     Performs closure to ensure that all elements add up to 1
 
@@ -214,7 +214,7 @@ def perturb(x, y):
     y = np.asarray(y, dtype=np.float64)
     if np.any(x < 0) or np.any(y < 0):
         raise ValueError("Cannot have negative proportions")
-    return _closure(x * y)
+    return closure(x * y)
 
 
 def perturb_inv(x, y):
@@ -263,7 +263,7 @@ def perturb_inv(x, y):
     y = np.asarray(y, dtype=np.float64)
     if np.any(x < 0) or np.any(y < 0):
         raise ValueError("Cannot have negative proportions")
-    return _closure(x / y)
+    return closure(x / y)
 
 
 def power(x, a):
@@ -311,7 +311,7 @@ def power(x, a):
         raise ValueError("Cannot have negative proportions")
     if np.any(np.logical_not(np.isclose(x.sum(axis=1), 1))):
         raise ValueError("Rows need to sum up to 1")
-    return _closure(x**a).squeeze()
+    return closure(x**a).squeeze()
 
 
 def clr(mat):
@@ -420,7 +420,7 @@ def clr_inv(mat):
        rows = compositions and
        columns = components
     """
-    return _closure(np.exp(mat))
+    return closure(np.exp(mat))
 
 
 def ilr(mat, basis=None):
