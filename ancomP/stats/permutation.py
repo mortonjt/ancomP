@@ -62,7 +62,7 @@ def _init_reciprocal_perms(cats, permutations=1000):
 
     Note: This can only handle binary classes now
     """
-    num_cats = 2 #number of distinct categories
+    num_cats = len(np.unique(cats)) #number of distinct categories
     c = len(cats)
     copy_cats = copy.deepcopy(cats)
     perms = np.array(np.zeros((c, num_cats*(permutations+1)), dtype=cats.dtype))
@@ -323,69 +323,6 @@ def _np_two_sample_t_statistic(mat, perms):
     return map(np.array, map(np.ravel, [t_stat[:,0],pvalues]))
 
 
-def _cl_two_sample_t_statistic(d_mat, d_perms):
-    """
-    TODO: Wait until element_prod bug is fixed
-
-    Calculates a permutative Welch's t-statistic
-
-    d_mat: pyviennacl.pycore.Matrix
-        Device based feature matrix
-    d_perm: pyviennacl.pycore.Matrix
-        Device based permutation matrix
-
-    Returns
-    =======
-    test_mean_stats: numpy.array
-        Mean statistics for each feature
-    pvalues: numpy.array
-        Type I error calculations for each mean statistics
-
-    This module will conduct a mean permutation test using
-    pyviennacl matrix algebra
-    """
-    assert type(mat) == pv.Matrix
-    assert type(perms) == pv.Matrix
-
-    ## Create a permutation matrix
-    num_cats = 2 # number of distinct categories
-    n_samp, c = d_perms.shape
-    permutations = (c-num_cats) / num_cats
-    n_otus, _ = d_mat.shape
-    ## Perform matrix multiplication on data matrix
-    ## and calculate sums and squared sums
-
-    d_mat2 = d_mat.element_prod(d_mat).result
-    _sums  = (d_mat * d_perms).result
-    _sums2 = (d_mat2 * d_perms).result
-
-    ## Calculate means and sample variances
-    _samp_ones = pv.Vector(np.ones(n_samp,dtype=d_mat.dtype))
-    _otu_ones = pv.Vector(np.ones(n_otus,dtype=d_mat.dtype))
-
-    tot =  (d_perms.T * _samp_ones).result
-
-    _tot = pv.Matrix(_sums.shape, dtype=_sums.dtype, layout=_sums.layout)
-    pv.Assign(_tot, tot.outer( _otu_ones )).execute()
-
-    _avgs  = _sums.element_div( _tot )
-    _avgs2 = _sums2.element_div( _tot )
-    r, c = _avgs2.shape
-    _vars  = _avgs2 - _avgs.element_prod(_avgs)[:r, :c]
-    _samp_vars =  pv.ElementProd(_tot, _vars).element_div(tot-np.float32(1))
-
-    ## Calculate the t statistic
-    idx = np.arange(0, (permutations+1) * num_cats, num_cats)
-    denom  = np.sqrt(_samp_vars[:, idx+1] / tot[:,idx+1]  + _samp_vars[:, idx] / tot[:,idx])
-    t_stat = np.divide(abs(_avgs[:, idx+1] - _avgs[:, idx]), denom)
-
-    ## Calculate the p-values
-    cmps =  t_stat[:,1:] >= t_stat[:,0]
-    pvalues = (cmps.sum(axis=1)+1.)/(permutations+1.)
-
-    return map(np.array, map(np.ravel, [t_stat[:,0],pvalues]))
-
-
 ############################################################
 ## F-test permutation tests
 ############################################################
@@ -473,17 +410,16 @@ def _np_k_sample_f_statistic(mat, cats, perms):
     S = mat.sum(axis=1)
     SS = mat2.sum(axis=1)
     sstot = SS - np.multiply(S,S) / float(n_samp)
-
     #Create index to sum the ssE together
     _sum_idx = _init_categorical_perms(
-        np.arange((permutations+1)*num_cats,dtype=np.int32)/num_cats,
+        np.arange((permutations+1)*num_cats,dtype=np.int32) / num_cats,
         permutations=0)
 
 
     ## Perform matrix multiplication on data matrix
     ## and calculate sums and squared sums and sum of squares
     _sums  = np.dot(mat, perms)
-    _sums2 = np.dot(np.multiply(mat,mat), perms)
+    _sums2 = np.dot(np.multiply(mat, mat), perms)
 
     tot =  perms.sum(axis=0)
     ss = _sums2 - np.multiply(_sums,_sums)/tot
@@ -491,10 +427,9 @@ def _np_k_sample_f_statistic(mat, cats, perms):
     sstrt = (sstot - sserr.T).T
     dftrt = num_cats-1
     dferr = np.dot(tot,_sum_idx) - num_cats
-
     f_stat = (sstrt / dftrt) / (sserr / dferr)
 
     cmps =  f_stat[:,1:].T >= f_stat[:,0]
-    pvalues = (cmps.sum(axis=1)+1.) / (permutations+1.)
+    pvalues = (cmps.sum(axis=0)+1.) / (permutations+1.)
     return map(np.array, map(np.ravel, [f_stat[:, 0], pvalues]))
 

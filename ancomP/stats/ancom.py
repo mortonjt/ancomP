@@ -11,10 +11,8 @@ from pandas import DataFrame, Series
 import scipy
 
 from math import log
-from permutation import (_init_reciprocal_perms,
+from permutation import (_init_categorical_perms,
                          _np_k_sample_f_statistic)
-
-
 
 
 def ancom(table, grouping,
@@ -22,7 +20,7 @@ def ancom(table, grouping,
           tau=0.02,
           theta=0.1,
           multiple_comparisons_correction=None,
-          significance_test=None):
+          significance_test=None, permutations=1000):
     r""" Performs a differential abundance test using ANCOM.
     This is done by calculating pairwise log ratios between all features
     and performing a significance test to determine if there is a significant
@@ -68,6 +66,9 @@ def ancom(table, grouping,
         classes.  This function must be able to accept at least two 1D
         array_like arguments of floats and returns a test statistic and a
         p-value. By default ``scipy.stats.f_oneway`` is used.
+    permutations : int
+        The number of permutations run if a permutation test is specified.
+
     Returns
     -------
     pd.DataFrame
@@ -220,8 +221,11 @@ def ancom(table, grouping,
                          'index must be consistent.')
 
     n_feat = mat.shape[1]
-
-    _logratio_mat = _log_compare(mat.values, cats.values, significance_test)
+    if significance_test == 'permutative_anova':
+        _logratio_mat = _stationary_log_compare(mat.values, cats.values,
+                                                permutations=permutations)
+    else:
+        _logratio_mat = _log_compare(mat.values, cats.values, significance_test)
     logratio_mat = _logratio_mat + _logratio_mat.T
 
     # Multiple comparisons
@@ -282,44 +286,6 @@ def _holm_bonferroni(p):
     return holm_p
 
 
-def _stationary_log_compare(mat,cats,permutations=1000):
-    """
-    Calculates pairwise log ratios between all otus
-    and performs a permutation tests to determine if there is a
-    significant difference in OTU ratios with respect to the
-    variable of interest
-
-    This is an optimized version to minimize data transfer
-    between the CPU and GPU.  Assumes a stationary set of permutations
-
-    otu_table: numpy 2d matrix
-    A contingency table where rows correspond to samples
-    and cols correspond to features (i.e. OTUs).
-
-    cat: numpy array float32
-    Binary categorical array
-    Returns:
-    --------
-    log ratio: numpy.ndarray
-        pvalue matrix
-    """
-    r,c = mat.shape
-    log_mat = np.log(mat+(1./r))
-    log_ratio = np.zeros((r,r),dtype=mat.dtype)
-    perms = _init_reciprocal_perms(cats, permutations)
-    perms = perms.astype(mat.dtype)
-    _ones = np.ones(r-1,dtype=mat.dtype).T
-
-    for i in range(r-1):
-        ## Perform outer product to create copies of log_mat[i,:]
-        ## similar to np.tile
-        outer = _ones[i:].dot(log_mat[i,:])
-        ratio =  log_mat[i+1:,:] - outer
-        m, p  = _np_k_sample_f_statistic(ratio, perms)
-        log_ratio[i,i+1:] = p.T
-    return log_ratio
-
-
 def _log_compare(mat, cats,
                  significance_test=scipy.stats.f_oneway):
     """ Calculates pairwise log ratios between all features and performs a
@@ -354,6 +320,40 @@ def _log_compare(mat, cats,
                                    arr=ratio)
         log_ratio[i, i+1:] = np.squeeze(np.array(p.T))
     return log_ratio
+
+
+def _stationary_log_compare(mat,cats,permutations=1000):
+    """
+    Calculates pairwise log ratios between all otus
+    and performs a permutation tests to determine if there is a
+    significant difference in OTU ratios with respect to the
+    variable of interest.  Assumes a stationary set of permutations
+
+    otu_table: numpy 2d matrix
+        Contingency table where rows correspond to samples and
+        cols correspond to otus
+
+    cats: numpy array float32
+        Categorical array
+
+    Returns:
+    --------
+    log ratio: numpy.ndarray
+        pvalue matrix
+    """
+    r, c = mat.shape
+    log_mat = np.log(mat)
+    log_ratio = np.zeros((c,c),dtype=mat.dtype)
+    perms = _init_categorical_perms(cats, permutations)
+    perms = perms.astype(mat.dtype)
+
+    _ones = np.matrix(np.ones(c,dtype=mat.dtype)).transpose()
+    for i in range(c-1):
+        ratio =  log_mat[:, i] - log_mat[:, i+1:].T
+        m, p  = _np_k_sample_f_statistic(ratio, cats, perms)
+        log_ratio[i,i+1:] = p
+    return log_ratio
+
 
 if __name__=="__main__":
     pass

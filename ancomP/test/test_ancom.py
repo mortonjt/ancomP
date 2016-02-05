@@ -13,6 +13,7 @@ from ancomP.stats.ancom import _holm_bonferroni, _log_compare, _stationary_log_c
 from ancomP import ancom
 from ancomP.linalg.composition import closure
 
+
 class AncomTests(TestCase):
     def setUp(self):
         # Basic count data with 2 groupings
@@ -277,6 +278,23 @@ class AncomTests(TestCase):
                             'reject': np.array([True, True, False, False,
                                                 True, False, False, False,
                                                 False], dtype=bool)})
+        assert_data_frame_almost_equal(result, exp)
+
+    def test_permutative_f(self):
+        test_table = pd.DataFrame(self.table1)
+        original_table = copy.deepcopy(test_table)
+        test_cats = pd.Series(self.cats1)
+        original_cats = copy.deepcopy(test_cats)
+        result = ancom(test_table, test_cats, significance_test='permutative_anova')
+        # Test to make sure that the input table hasn't be altered
+        assert_data_frame_almost_equal(original_table, test_table)
+        # Test to make sure that the input table hasn't be altered
+        pdt.assert_series_equal(original_cats, test_cats)
+        exp = pd.DataFrame({'W': np.array([6, 6, 3, 3, 2, 2, 2]),
+                            'reject': np.array([True, True, False, False,
+                                                False, False, False],
+                                               dtype=bool)})
+
         assert_data_frame_almost_equal(result, exp)
 
     def test_ancom_noncontiguous(self):
