@@ -11,8 +11,8 @@ from pandas import DataFrame, Series
 import scipy
 
 from math import log
-from permutation import (_init_categorical_perms,
-                         _np_k_sample_f_statistic)
+from ancomP.stats.permutation import (_init_categorical_perms,
+                                      _np_k_sample_f_statistic)
 
 
 def ancom(table, grouping,
@@ -112,7 +112,7 @@ def ancom(table, grouping,
     Examples
     --------
     First import all of the necessary modules:
-    >>> from skbio.stats.composition import ancom
+    >>> from ancomP.stats.ancom import ancom
     >>> import pandas as pd
     Now let's load in a pd.DataFrame with 6 samples and 7 unknown bacteria:
     >>> table = pd.DataFrame([[12, 11, 10, 10, 10, 10, 10],
@@ -131,7 +131,9 @@ def ancom(table, grouping,
     ...                      index=['s1','s2','s3','s4','s5','s6'])
     Now run ``ancom`` and see if there are any features that have any
     significant differences between the treatment and the control.
-    >>> results = ancom(table, grouping)
+    >>> results = ancom(table, grouping,
+    ...                 significance_test='permutative_anova',
+    ...                 permutations=100)
     >>> results['W']
     b1    0
     b2    4
@@ -221,9 +223,10 @@ def ancom(table, grouping,
                          'index must be consistent.')
 
     n_feat = mat.shape[1]
-    if significance_test == 'permutative_anova':
+    if significance_test == 'permutative-anova':
         _logratio_mat = _stationary_log_compare(mat.values, cats.values,
                                                 permutations=permutations)
+        print(_logratio_mat)
     else:
         _logratio_mat = _log_compare(mat.values, cats.values, significance_test)
     logratio_mat = _logratio_mat + _logratio_mat.T

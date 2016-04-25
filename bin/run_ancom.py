@@ -1,7 +1,7 @@
 import argparse
 import pandas as pd
 import sys
-from stats.ancom import ancom_cl
+from ancomP.stats.ancom import ancom
 
 def run(otu_file, meta_file, voi, out_handle, alpha, permutations):
     otu_table = pd.read_table(otu_file,index_col=0)
@@ -9,7 +9,7 @@ def run(otu_file, meta_file, voi, out_handle, alpha, permutations):
     cats = metadata[voi].as_matrix()
 
     sig_otus = ancom_cl(otu_table,cats,alpha,permutations)
-    
+
     outhandle.write('\n'.join(sig_otus) + '\n')
 
 if __name__=="__main__":
@@ -33,7 +33,7 @@ if __name__=="__main__":
         '--alpha', type=int, required=False, default = 0.05,
         help='Signficance threshold')
     parser.add_argument(\
-        '--permutations', type=str, required=False, default = 1000, 
+        '--permutations', type=str, required=False, default = 1000,
         help='Number of permutations to calculate exact p-value')
     args = parser.parse_args()
 
@@ -41,7 +41,7 @@ if __name__=="__main__":
         outhandle = open(args.output,'w')
     else:
         outhandle = sys.stdout
-        
+
     run(args.otu_table,
         args.meta_data,
         args.variable_of_interest,

@@ -285,7 +285,7 @@ class AncomTests(TestCase):
         original_table = copy.deepcopy(test_table)
         test_cats = pd.Series(self.cats1)
         original_cats = copy.deepcopy(test_cats)
-        result = ancom(test_table, test_cats, significance_test='permutative_anova')
+        result = ancom(test_table, test_cats, significance_test='permutative-anova')
         # Test to make sure that the input table hasn't be altered
         assert_data_frame_almost_equal(original_table, test_table)
         # Test to make sure that the input table hasn't be altered

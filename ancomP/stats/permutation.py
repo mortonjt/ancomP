@@ -176,7 +176,7 @@ def _np_two_sample_mean_statistic(mat, perms):
     ## Create a permutation matrix
     num_cats = 2 #number of distinct categories
     n_otus, c = perms.shape
-    permutations = (c-num_cats) / num_cats
+    permutations = (c-num_cats) // num_cats
 
     ## Perform matrix multiplication on data matrix
     ## and calculate averages
@@ -297,7 +297,7 @@ def _np_two_sample_t_statistic(mat, perms):
     ## Create a permutation matrix
     num_cats = 2 # number of distinct categories
     n_otus, c = perms.shape
-    permutations = (c-num_cats) / num_cats
+    permutations = (c-num_cats) // num_cats
 
     ## Perform matrix multiplication on data matrix
     ## and calculate sums and squared sums
@@ -412,7 +412,7 @@ def _np_k_sample_f_statistic(mat, cats, perms):
     sstot = SS - np.multiply(S,S) / float(n_samp)
     #Create index to sum the ssE together
     _sum_idx = _init_categorical_perms(
-        np.arange((permutations+1)*num_cats,dtype=np.int32) / num_cats,
+        np.arange((permutations+1)*num_cats,dtype=np.int32) // num_cats,
         permutations=0)
 
 
@@ -420,15 +420,14 @@ def _np_k_sample_f_statistic(mat, cats, perms):
     ## and calculate sums and squared sums and sum of squares
     _sums  = np.dot(mat, perms)
     _sums2 = np.dot(np.multiply(mat, mat), perms)
-
     tot =  perms.sum(axis=0)
     ss = _sums2 - np.multiply(_sums,_sums)/tot
     sserr = np.dot(ss, _sum_idx)
     sstrt = (sstot - sserr.T).T
+
     dftrt = num_cats-1
     dferr = np.dot(tot,_sum_idx) - num_cats
     f_stat = (sstrt / dftrt) / (sserr / dferr)
-
     cmps =  f_stat[:,1:].T >= f_stat[:,0]
     pvalues = (cmps.sum(axis=0)+1.) / (permutations+1.)
     return map(np.array, map(np.ravel, [f_stat[:, 0], pvalues]))
