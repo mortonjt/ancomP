@@ -226,7 +226,6 @@ def ancom(table, grouping,
     if significance_test == 'permutative-anova':
         _logratio_mat = _stationary_log_compare(mat.values, cats.values,
                                                 permutations=permutations)
-        print(_logratio_mat)
     else:
         _logratio_mat = _log_compare(mat.values, cats.values, significance_test)
     logratio_mat = _logratio_mat + _logratio_mat.T
