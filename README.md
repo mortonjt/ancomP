@@ -4,7 +4,7 @@ ANCOM
 [Analysis of Composition of Microbiomes](http://www.microbecolhealthdis.net/index.php/mehd/article/view/27663%20)
 
 ANCOM is a novel statistical test that accounts for OTU dependencies when calculating group signficance.
-This software makes use of GPU-accelerated matrix multiplication and permutation tests to
+This software makes use of accelerated matrix multiplication and permutation tests to
 allow for these statistical tests to complete within a reasonable amount of time.
 
 
@@ -33,11 +33,29 @@ to mitigate the dependency issues.
 Getting Started
 ===============
 After installing this software, I recommend running the unittests to make sure that everything is working.
-To run ANCOM from the command, run the following command.
-```
-python bin/run_ancom.py
-  --otu-table=data/otu_test.txt
-  --meta-data=data/meta_test.txt
-  --variable-of-interest=GRP1
-  --output="test.out"
+ANCOM has been submitted to scikit-bio found [here](http://scikit-bio.org/docs/0.4.2/generated/generated/skbio.stats.composition.ancom.html#skbio.stats.composition.ancom)
+
+To get started using the accelerated permutation tests run the following code
+```python
+    >>> from ancomP.stats import ancom
+    >>> import pandas as pd
+    >>> table = pd.DataFrame([[12, 11, 10, 10, 10, 10, 10],
+    ...                       [9,  11, 12, 10, 10, 10, 10],
+    ...                       [1,  11, 10, 11, 10, 5,  9],
+    ...                       [22, 21, 9,  10, 10, 10, 10],
+    ...                       [20, 22, 10, 10, 13, 10, 10],
+    ...                       [23, 21, 14, 10, 10, 10, 10]],
+    ...                      index=['s1','s2','s3','s4','s5','s6'],
+    ...                      columns=['b1','b2','b3','b4','b5','b6','b7'])
+    >>> grouping = pd.Series([0, 0, 0, 1, 1, 1],
+    ...                      index=['s1','s2','s3','s4','s5','s6'])
+    >>> results = ancom.ancom(table, grouping, significance_test='permutative_anova', permutations=100)
+    >>> results['reject']
+    b1     True
+    b2     True
+    b3     True
+    b4    False
+    b5    False
+    b6    False
+    b7    False
 ```
