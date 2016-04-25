@@ -33,11 +33,16 @@ to mitigate the dependency issues.
 Getting Started
 ===============
 After installing this software, I recommend running the unittests to make sure that everything is working.
+That can be done by going to the cloned directory, and running the following command
+
+```
+nosetests .
+```
 ANCOM has been submitted to scikit-bio found [here](http://scikit-bio.org/docs/0.4.2/generated/generated/skbio.stats.composition.ancom.html#skbio.stats.composition.ancom)
 
 To get started using the accelerated permutation tests run the following code
 ```python
-    >>> from ancomP.stats import ancom
+    >>> from ancomP.stats.ancom import ancom
     >>> import pandas as pd
     >>> table = pd.DataFrame([[12, 11, 10, 10, 10, 10, 10],
     ...                       [9,  11, 12, 10, 10, 10, 10],
@@ -49,7 +54,7 @@ To get started using the accelerated permutation tests run the following code
     ...                      columns=['b1','b2','b3','b4','b5','b6','b7'])
     >>> grouping = pd.Series([0, 0, 0, 1, 1, 1],
     ...                      index=['s1','s2','s3','s4','s5','s6'])
-    >>> results = ancom.ancom(table, grouping, significance_test='permutative_anova', permutations=100)
+    >>> results = ancom(table, grouping, significance_test='permutative_anova', permutations=100)
     >>> results['reject']
     b1     True
     b2     True
