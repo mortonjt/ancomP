@@ -12,6 +12,7 @@ Installation
 ============
 This software requires the following dependencies
 ```
+python=3
 pandas
 biom-format
 numpy >= 1.7
