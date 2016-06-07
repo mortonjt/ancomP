@@ -55,7 +55,7 @@ To get started using the accelerated permutation tests run the following code
     ...                      columns=['b1','b2','b3','b4','b5','b6','b7'])
     >>> grouping = pd.Series([0, 0, 0, 1, 1, 1],
     ...                      index=['s1','s2','s3','s4','s5','s6'])
-    >>> results = ancom(table, grouping, significance_test='permutative_anova', permutations=100)
+    >>> results = ancom(table, grouping, significance_test='permutative-anova', permutations=100)
     >>> results['reject']
     b1     True
     b2     True
