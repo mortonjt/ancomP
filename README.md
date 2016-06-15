@@ -48,18 +48,20 @@ To get started using the accelerated permutation tests run the following code
     >>> table = pd.DataFrame([[12, 11, 10, 10, 10, 10, 10],
     ...                       [9,  11, 12, 10, 10, 10, 10],
     ...                       [1,  11, 10, 11, 10, 5,  9],
-    ...                       [22, 21, 9,  10, 10, 10, 10],
-    ...                       [20, 22, 10, 10, 13, 10, 10],
-    ...                       [23, 21, 14, 10, 10, 10, 10]],
-    ...                      index=['s1','s2','s3','s4','s5','s6'],
+    ...                       [2,  11, 10, 11, 10, 5,  9],
+    ...                       [221, 210, 9,  10, 10, 10, 10],
+    ...                       [220, 210, 9,  10, 10, 10, 10],
+    ...                       [200, 220, 10, 10, 13, 10, 10],
+    ...                       [230, 210, 14, 10, 10, 10, 10]],
+    ...                      index=['s1','s2','s3','s4','s5','s6', 's7','s8'],
     ...                      columns=['b1','b2','b3','b4','b5','b6','b7'])
-    >>> grouping = pd.Series([0, 0, 0, 1, 1, 1],
-    ...                      index=['s1','s2','s3','s4','s5','s6'])
+    >>> grouping = pd.Series([0, 0, 0, 0, 1, 1, 1, 1],
+    ...                      index=['s1','s2','s3','s4','s5','s6', 's7','s8'])
     >>> results = ancom(table, grouping, significance_test='permutative-anova', permutations=100)
     >>> results['reject']
     b1     True
     b2     True
-    b3     True
+    b3    False
     b4    False
     b5    False
     b6    False
