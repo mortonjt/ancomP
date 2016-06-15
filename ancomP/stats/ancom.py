@@ -345,7 +345,7 @@ def _stationary_log_compare(mat,cats,permutations=1000):
     """
     r, c = mat.shape
     log_mat = np.log(mat)
-    log_ratio = np.zeros((c,c),dtype=mat.dtype)
+    log_ratio = np.zeros((c,c),dtype=np.float64)
     perms = _init_categorical_perms(cats, permutations)
     perms = perms.astype(mat.dtype)
 
