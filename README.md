@@ -67,3 +67,5 @@ To get started using the accelerated permutation tests run the following code
     b6    False
     b7    False
 ```
+
+Some more information about ANCOM can be found at this [blog post](http://mortonjt.blogspot.com/2016/06/ancom-explained.html)
